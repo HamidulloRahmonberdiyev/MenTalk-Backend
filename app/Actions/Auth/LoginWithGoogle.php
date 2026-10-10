@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Contracts\IdentityVerifier;
+use App\Exceptions\AccountBlocked;
 use App\Models\User;
 
 final readonly class LoginWithGoogle
@@ -22,6 +23,10 @@ final readonly class LoginWithGoogle
             ['google_id' => $identity->subject],
             ['email' => $identity->email, 'name' => $identity->name],
         );
+
+        if ($user->isBlocked()) {
+            throw new AccountBlocked;
+        }
 
         if ($user->trashed()) {
             $user->restore();

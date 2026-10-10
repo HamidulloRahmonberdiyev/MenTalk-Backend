@@ -14,9 +14,14 @@ final class DailyQuota
 {
     private const TTL_SECONDS = 90_000;
 
+    public static function key(string $bucket, string $userId): string
+    {
+        return "quota:{$bucket}:{$userId}:".now()->format('Ymd');
+    }
+
     public function handle(Request $request, Closure $next, string $bucket): Response
     {
-        $key = "quota:{$bucket}:{$request->user()->id}:".now()->format('Ymd');
+        $key = self::key($bucket, $request->user()->id);
 
         Cache::add($key, 0, self::TTL_SECONDS);
         $used = (int) Cache::increment($key);

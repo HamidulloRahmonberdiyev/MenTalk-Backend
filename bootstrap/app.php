@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\AccountBlocked;
 use App\Exceptions\AiRejected;
 use App\Exceptions\AiUnavailable;
 use App\Http\Middleware\DailyQuota;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        $exceptions->render(fn (AccountBlocked $e) => Problem::make(403, 'blocked'));
         $exceptions->render(fn (AiUnavailable $e) => Problem::make(503, 'unavailable', ['Retry-After' => 5]));
         $exceptions->render(fn (LockTimeoutException $e) => Problem::make(409, 'turn_in_progress'));
         $exceptions->render(fn (AiRejected $e) => Problem::make(502, 'turn_failed'));
