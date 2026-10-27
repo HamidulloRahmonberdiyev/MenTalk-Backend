@@ -51,7 +51,8 @@ return [
         'speech' => [
             'driver' => 'local',
             'root' => storage_path('app/public/speech'),
-            'url' => env('SPEECH_DISK_URL', rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/speech'),
+            // `?:` rather than env()'s default: a blank `SPEECH_DISK_URL=` reads as '' and gave relative audio URLs.
+            'url' => env('SPEECH_DISK_URL') ?: rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/speech',
             'visibility' => 'public',
             'throw' => true,
             'report' => false,

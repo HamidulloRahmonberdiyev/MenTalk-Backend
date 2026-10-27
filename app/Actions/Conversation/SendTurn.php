@@ -7,6 +7,7 @@ namespace App\Actions\Conversation;
 use App\Contracts\AiClient;
 use App\Contracts\SpeechSynthesizer;
 use App\DTO\AiRequest;
+use App\DTO\SpeechClip;
 use App\DTO\TurnInput;
 use App\DTO\TurnResult;
 use App\Enums\TurnKind;
@@ -16,6 +17,7 @@ use App\Services\Ai\PromptBuilder;
 use App\Services\Ai\Schemas\TurnSchema;
 use App\Services\Conversation\TurnHistory;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 final readonly class SendTurn
 {
@@ -40,11 +42,23 @@ final readonly class SendTurn
                 schema: TurnSchema::get(),
             );
             $result = TurnResult::from($this->ai->json($request));
-            $clip = $this->speech->speak($result->reply, config('ai.voice'));
+            $clip = $this->speak($result->reply);
 
-            return $this->history->append($conversation, $input, $result, $clip->url)
-                ->setAttribute('audio_ms', $clip->durationMs)
+            return $this->history->append($conversation, $input, $result, $clip?->url)
+                ->setAttribute('audio_ms', $clip?->durationMs)
                 ->setAttribute('transcript', $input->kind === TurnKind::Text ? $input->text : $result->transcript);
         });
+    }
+
+    /** Voice is a nice-to-have: without it the reply still goes out and the app reads it with the device voice. */
+    private function speak(string $text): ?SpeechClip
+    {
+        try {
+            return $this->speech->speak($text, config('ai.voice'));
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
+        }
     }
 }

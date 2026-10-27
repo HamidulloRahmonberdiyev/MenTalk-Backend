@@ -31,7 +31,7 @@ final class TurnHistory
             : $contents;
     }
 
-    public function append(Conversation $conversation, TurnInput $input, TurnResult $result, string $audioUrl): Turn
+    public function append(Conversation $conversation, TurnInput $input, TurnResult $result, ?string $audioUrl): Turn
     {
         return DB::transaction(function () use ($conversation, $input, $result, $audioUrl) {
             $learnerSaid = $input->kind === TurnKind::Text ? $input->text : $result->transcript;

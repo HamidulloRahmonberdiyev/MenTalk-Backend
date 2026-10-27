@@ -8,6 +8,8 @@ use App\Contracts\AiClient;
 use App\Contracts\IdentityVerifier;
 use App\Contracts\SpeechSynthesizer;
 use App\DTO\Identity;
+use App\DTO\SpeechClip;
+use App\Exceptions\AiUnavailable;
 use App\Jobs\PurgeUserData;
 use App\Models\Conversation;
 use App\Models\LearnerProfile;
@@ -93,6 +95,22 @@ final class ApiTest extends TestCase
         $this->actingAs($user)->getJson('/api/v1/stats')->assertOk()->assertJsonPath('data.streak', 1);
         $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/turns", ['text' => 'Ещё'])->assertForbidden();
         $this->assertCount(2, $ai->requests);
+    }
+
+    public function test_reply_still_arrives_when_speech_fails(): void
+    {
+        $this->fakeAi(['transcript' => '', 'reply' => 'Привет!', 'emotion' => 'happy', 'mistakes' => []]);
+        $this->app->instance(SpeechSynthesizer::class, new class implements SpeechSynthesizer
+        {
+            public function speak(string $text, string $voice): SpeechClip
+            {
+                throw new AiUnavailable;
+            }
+        });
+
+        $this->actingAs($this->user())->postJson('/api/v1/conversations', ['scenario_id' => 'cafe'])
+            ->assertCreated()->assertJsonPath('data.reply', 'Привет!')
+            ->assertJsonPath('data.audio_url', null)->assertJsonPath('data.audio_ms', null);
     }
 
     public function test_cannot_write_into_someone_elses_conversation(): void
