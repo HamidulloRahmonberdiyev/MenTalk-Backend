@@ -19,10 +19,9 @@ final readonly class LoginWithGoogle
     {
         $identity = $this->verifier->verify($idToken);
 
-        $user = User::withTrashed()->updateOrCreate(
-            ['google_id' => $identity->subject],
-            ['email' => $identity->email, 'name' => $identity->name],
-        );
+        // Google only seeds the name: once the user edits it, signing in again must not undo that.
+        $user = User::withTrashed()->firstOrNew(['google_id' => $identity->subject], ['name' => $identity->name]);
+        $user->fill(['email' => $identity->email, 'google_avatar_url' => $identity->picture])->save();
 
         if ($user->isBlocked()) {
             throw new AccountBlocked;

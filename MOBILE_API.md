@@ -129,6 +129,8 @@ await SecureStore.setItemAsync('token', data.data.token);
   "id": 1,
   "name": "Ali",
   "email": "ali@gmail.com",
+  "avatar_url": "https://…",     // yuklangan rasm, bo'lmasa Google rasmi | null
+  "avatar_custom": false,        // true: foydalanuvchi o'zi yuklagan (o'chirsa bo'ladi)
   "gender": "male",              // "male" | "female" | null
   "country": "UZ",               // ISO-2 | null
   "birth_date": "2000-05-20",
@@ -151,12 +153,18 @@ await SecureStore.setItemAsync('token', data.data.token);
 | GET | `/me` | Joriy foydalanuvchi |
 | PUT | `/me` | Profilni yangilash (barcha maydonlar ixtiyoriy) |
 | DELETE | `/me` | Akkauntni o'chirish (`204`) — App Store/Play talabi uchun sozlamalarda tugma bo'lsin |
+| POST | `/me/avatar` | Profil rasmini yuklash (`multipart/form-data`, maydon `photo`). Eski rasm o'chiriladi. Javob: `User` |
+| DELETE | `/me/avatar` | Yuklangan rasmni o'chirish; `avatar_url` Google rasmiga qaytadi. Javob: `User` |
+
+**`POST /me/avatar`:** `photo` — jpg/png/webp, max 5 MB, 64–4096 px. Limit: 10 so'rov/daqiqa. Ilova rasmni yuborishdan oldin 512×512 JPEG'ga kichraytiradi.
+
+Google orqali kirganda `avatar_url` Google rasmiga (512 px) o'rnatiladi; foydalanuvchi o'z rasmini yuklasa, u ustun turadi. Ism faqat birinchi kirishda Google'dan olinadi, keyin foydalanuvchi o'zgartirgani saqlanadi.
 
 **`PUT /me` maydonlari:**
 
 | Maydon | Qoida |
 |---|---|
-| `name` | string, max 120 |
+| `name` | string, 2–120 |
 | `gender` | `male` / `female` / `null` |
 | `country` | 2 harfli kod / `null` |
 | `birth_date` | sana, bugundan oldin / `null` |

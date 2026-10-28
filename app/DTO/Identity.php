@@ -6,5 +6,10 @@ namespace App\DTO;
 
 final readonly class Identity
 {
-    public function __construct(public string $subject, public string $email, public string $name) {}
+    public function __construct(
+        public string $subject,
+        public string $email,
+        public string $name,
+        public ?string $picture = null,
+    ) {}
 }

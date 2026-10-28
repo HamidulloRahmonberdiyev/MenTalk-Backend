@@ -14,7 +14,7 @@ final class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['sometimes', 'string', 'max:120'],
+            'name' => ['sometimes', 'string', 'min:2', 'max:120'],
             'gender' => ['sometimes', 'nullable', Rule::enum(Gender::class)],
             'country' => ['sometimes', 'nullable', 'string', 'size:2'],
             'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],

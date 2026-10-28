@@ -19,10 +19,21 @@ final readonly class GoogleIdentityVerifier implements IdentityVerifier
             $payload = (new Client(['client_id' => $clientId]))->verifyIdToken($idToken);
 
             if ($payload) {
-                return new Identity($payload['sub'], $payload['email'], $payload['name'] ?? $payload['email']);
+                return new Identity(
+                    $payload['sub'],
+                    $payload['email'],
+                    $payload['name'] ?? $payload['email'],
+                    $this->largePicture($payload['picture'] ?? null),
+                );
             }
         }
 
         throw new AuthenticationException('Invalid Google token');
+    }
+
+    /** Google hands out a 96px thumbnail (`…=s96-c`); the profile screen needs a sharper one. */
+    private function largePicture(?string $url): ?string
+    {
+        return $url === null ? null : preg_replace('/=s\d+(-c)?$/', '=s512-c', $url);
     }
 }

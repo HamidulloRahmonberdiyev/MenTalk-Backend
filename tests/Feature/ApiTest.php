@@ -18,7 +18,9 @@ use App\Models\User;
 use App\Models\VocabCard;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\Fakes\FakeAiClient;
 use Tests\Fakes\FakeSpeech;
 use Tests\TestCase;
@@ -186,5 +188,60 @@ final class ApiTest extends TestCase
 
         $this->assertSoftDeleted($user);
         Queue::assertPushed(PurgeUserData::class);
+    }
+
+    public function test_google_login_sets_the_google_photo_and_keeps_an_edited_name(): void
+    {
+        $this->app->instance(IdentityVerifier::class, new class implements IdentityVerifier
+        {
+            public function verify(string $idToken): Identity
+            {
+                return new Identity('g-1', 'a@b.test', 'Ali', 'https://lh3.googleusercontent.com/a/x=s512-c');
+            }
+        });
+        $login = fn () => $this->postJson('/api/v1/auth/google', ['id_token' => 'x', 'device' => 'iPhone'])->assertOk();
+
+        $token = $login()->assertJsonPath('data.user.avatar_url', 'https://lh3.googleusercontent.com/a/x=s512-c')->json('data.token');
+        $this->withToken($token)->putJson('/api/v1/me', ['name' => 'Alisher'])->assertOk();
+
+        $login()->assertJsonPath('data.user.name', 'Alisher');
+    }
+
+    public function test_uploading_an_avatar_replaces_the_previous_file(): void
+    {
+        Storage::fake(User::AVATAR_DISK);
+        $user = $this->user();
+
+        $this->actingAs($user)->postJson('/api/v1/me/avatar', ['photo' => UploadedFile::fake()->image('a.jpg', 300, 300)])
+            ->assertOk()->assertJsonPath('data.avatar_url', fn (?string $url) => $url !== null);
+        $previous = $user->refresh()->avatar_path;
+
+        $this->actingAs($user)->postJson('/api/v1/me/avatar', ['photo' => UploadedFile::fake()->image('b.png', 300, 300)])->assertOk();
+
+        Storage::disk(User::AVATAR_DISK)->assertMissing($previous);
+        Storage::disk(User::AVATAR_DISK)->assertExists($user->refresh()->avatar_path);
+    }
+
+    public function test_avatar_must_be_an_image(): void
+    {
+        Storage::fake(User::AVATAR_DISK);
+
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/me/avatar', ['photo' => UploadedFile::fake()->create('a.pdf', 10, 'application/pdf')])
+            ->assertUnprocessable()->assertJsonValidationErrors('photo');
+    }
+
+    public function test_removing_the_avatar_falls_back_to_the_google_photo(): void
+    {
+        Storage::fake(User::AVATAR_DISK);
+        $user = $this->user();
+        $user->forceFill(['google_avatar_url' => 'https://lh3.googleusercontent.com/a/x'])->save();
+        $this->actingAs($user)->postJson('/api/v1/me/avatar', ['photo' => UploadedFile::fake()->image('a.jpg', 300, 300)])->assertOk();
+        $path = $user->refresh()->avatar_path;
+
+        $this->actingAs($user)->deleteJson('/api/v1/me/avatar')
+            ->assertOk()->assertJsonPath('data.avatar_url', 'https://lh3.googleusercontent.com/a/x');
+
+        Storage::disk(User::AVATAR_DISK)->assertMissing($path);
     }
 }

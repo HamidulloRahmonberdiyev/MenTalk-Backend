@@ -17,6 +17,8 @@ final class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'avatar_url' => $this->avatar_url,
+            'avatar_custom' => $this->avatar_path !== null,
             'gender' => $profile?->gender?->value,
             'country' => $profile?->country,
             'birth_date' => $profile?->birth_date?->toDateString(),

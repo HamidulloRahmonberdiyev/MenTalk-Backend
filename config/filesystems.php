@@ -47,6 +47,16 @@ return [
             'report' => false,
         ],
 
+        // Profile photos, one folder per user. Production: an S3-compatible disk behind a CDN.
+        'avatars' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/avatars'),
+            'url' => env('AVATAR_DISK_URL') ?: rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/avatars',
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => false,
+        ],
+
         // TTS audio cache. Production: point at an S3-compatible disk (R2) behind a CDN.
         'speech' => [
             'driver' => 'local',

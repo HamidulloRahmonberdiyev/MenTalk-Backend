@@ -10,6 +10,7 @@ use App\Models\User;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -25,6 +26,7 @@ final class UsersTable
             ->modifyQueryUsing(fn (Builder $query) => $query->with('profile')->withCount('conversations'))
             ->defaultSort('created_at', 'desc')
             ->columns([
+                ImageColumn::make('avatar_url')->label('')->circular()->imageSize(36),
                 TextColumn::make('name')->label('Ism')->searchable()->description(fn (User $record) => $record->email),
                 TextColumn::make('email')->searchable()->hidden(),
                 TextColumn::make('profile.level')->label('Daraja')->badge()->placeholder('—'),
