@@ -13,7 +13,7 @@ final class TranslateController extends Controller
     public function __invoke(TranslateRequest $request, Translate $translate): JsonResponse
     {
         return response()->json(['data' => [
-            'translation' => $translate($request->string('text')->toString(), $request->string('language')->toString()),
+            'translation' => $translate($request->string('text')->toString(), $request->languageName()),
         ]]);
     }
 }

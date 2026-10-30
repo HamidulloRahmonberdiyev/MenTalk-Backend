@@ -22,15 +22,17 @@ final readonly class SyncCards
     public function __invoke(User $user, ?CarbonImmutable $cursor, Collection $changes): SyncResult
     {
         $now = CarbonImmutable::now();
-        $existing = $user->cards()->withTrashed()->whereIn('word', $changes->pluck('word'))->get()->keyBy('word');
+        $existing = $user->cards()->withTrashed()->whereIn('word', $changes->pluck('word'))->get()
+            ->keyBy(fn (VocabCard $card) => $card->identity());
+        $stored = fn (CardChange $change) => $existing->get(VocabCard::identityOf($change->language, $change->word));
 
         $rows = $changes
-            ->filter(fn (CardChange $change) => $existing->get($change->word)?->updated_at?->lt($change->updatedAt) ?? true)
-            ->map(fn (CardChange $change) => $change->toRow($user->id, $existing->get($change->word)?->id ?? (string) Str::ulid(), $now))
+            ->filter(fn (CardChange $change) => $stored($change)?->updated_at?->lt($change->updatedAt) ?? true)
+            ->map(fn (CardChange $change) => $change->toRow($user->id, $stored($change)?->id ?? (string) Str::ulid(), $now))
             ->values()->all();
 
         if ($rows !== []) {
-            VocabCard::upsert($rows, ['user_id', 'word'], self::UPDATABLE);
+            VocabCard::upsert($rows, ['user_id', 'language', 'word'], self::UPDATABLE);
         }
 
         $cards = $user->cards()->withTrashed()

@@ -3,6 +3,8 @@
 use App\Exceptions\AccountBlocked;
 use App\Exceptions\AiRejected;
 use App\Exceptions\AiUnavailable;
+use App\Exceptions\ScenarioUnavailable;
+use App\Exceptions\UnsupportedLanguage;
 use App\Http\Middleware\DailyQuota;
 use App\Http\Middleware\ETag;
 use App\Support\Problem;
@@ -30,4 +32,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(fn (AiUnavailable $e) => Problem::make(503, 'unavailable', ['Retry-After' => 5]));
         $exceptions->render(fn (LockTimeoutException $e) => Problem::make(409, 'turn_in_progress'));
         $exceptions->render(fn (AiRejected $e) => Problem::make(502, 'turn_failed'));
+        $exceptions->render(fn (UnsupportedLanguage $e) => Problem::make(422, 'unsupported_language'));
+        $exceptions->render(fn (ScenarioUnavailable $e) => Problem::make(404, 'scenario_unavailable'));
     })->create();

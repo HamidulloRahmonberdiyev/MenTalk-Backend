@@ -20,6 +20,7 @@ final class LearnerProfileFactory extends Factory
             'level' => 'beginner',
             'goals' => ['travel'],
             'ui_language' => 'uz',
+            'target_language' => 'ru',
             'timezone' => 'Asia/Tashkent',
             'daily_goal_minutes' => 10,
             'xp' => 0,

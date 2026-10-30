@@ -14,6 +14,7 @@ final class ConversationResource extends JsonResource
         return [
             'id' => $this->id,
             'scenario_id' => $this->scenario_id,
+            'target_language' => $this->target_language,
             'state' => $this->state->value,
             'score' => $this->score,
             'learner_turns' => $this->learner_turns,

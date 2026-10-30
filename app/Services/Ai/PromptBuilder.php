@@ -5,34 +5,38 @@ declare(strict_types=1);
 namespace App\Services\Ai;
 
 use App\DTO\TurnInput;
+use App\DTO\TutorLanguage;
 use App\Enums\TurnKind;
-use App\Models\LearnerProfile;
-use App\Models\Scenario;
+use App\Models\Conversation;
 
+/** Assembles the tutor's prompts for one conversation, in the language it is held in. */
 final readonly class PromptBuilder
 {
-    public function __construct(private PromptStore $prompts) {}
+    public function __construct(private PromptRenderer $renderer) {}
 
-    public function system(Scenario $scenario, LearnerProfile $learner): string
+    public function system(Conversation $conversation, TutorLanguage $language): string
     {
-        return strtr($this->prompts->get('tutor.system'), [
-            '{scenario}' => $scenario->brief,
-            '{topics}' => $scenario->next_topics,
+        $learner = $conversation->user->profile;
+        $brief = $conversation->scenario->briefFor($language->code);
+
+        return $this->renderer->render('tutor.system', $language, [
+            '{scenario}' => $this->renderer->fill($brief->brief, $language),
+            '{topics}' => $brief->next_topics,
             '{learner}' => $learner->describe(),
-            '{level}' => $this->prompts->get('level.'.($learner->level?->value ?? 'beginner')),
-            '{gender}' => $this->prompts->get('gender.'.($learner->gender?->value ?? 'unspecified')),
-            '{ui_language}' => $learner->uiLanguageName(),
-            '{flow_rules}' => $this->prompts->get('tutor.flow'),
+            '{level}' => $this->renderer->render('level.'.($learner->level?->value ?? 'beginner'), $language),
+            '{gender}' => $this->renderer->render('gender.'.($learner->gender?->value ?? 'unspecified'), $language),
+            '{ui_language}' => $learner->interfaceLanguage()->englishName(),
+            '{flow_rules}' => $this->renderer->render('tutor.flow', $language),
         ]);
     }
 
-    public function userParts(TurnInput $input): array
+    public function userParts(TurnInput $input, TutorLanguage $language): array
     {
         return match ($input->kind) {
-            TurnKind::Opening => [['text' => $this->prompts->get('turn.opening')]],
+            TurnKind::Opening => [['text' => $this->renderer->render('turn.opening', $language)]],
             TurnKind::Text => [['text' => "The learner typed: {$input->text}"]],
             TurnKind::Audio => [
-                ['text' => $this->prompts->get('turn.audio')],
+                ['text' => $this->renderer->render('turn.audio', $language)],
                 ['inlineData' => ['mimeType' => $input->mime, 'data' => $input->audio]],
             ],
         };

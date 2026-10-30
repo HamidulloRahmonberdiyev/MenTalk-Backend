@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\AiPrompts;
 
+use App\Filament\Resources\AiPrompts\Pages\CreateAiPrompt;
 use App\Filament\Resources\AiPrompts\Pages\EditAiPrompt;
 use App\Filament\Resources\AiPrompts\Pages\ListAiPrompts;
 use App\Filament\Resources\AiPrompts\Schemas\AiPromptForm;
@@ -16,8 +17,9 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 /**
- * Prompts are looked up by key in code, so the set of keys is fixed by seeders:
- * admins edit the text, never create or delete rows.
+ * Prompts are looked up by key in code, so the shared keys are fixed by seeders: admins edit their
+ * text, never delete them. Admins may add a language variant ("tutor.flow@en") when one language
+ * needs different wording; only those can be deleted, which falls back to the shared prompt.
  */
 final class AiPromptResource extends Resource
 {
@@ -33,14 +35,9 @@ final class AiPromptResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
-
     public static function canDelete($record): bool
     {
-        return false;
+        return $record instanceof AiPrompt && $record->isVariant();
     }
 
     public static function canDeleteAny(): bool
@@ -62,6 +59,7 @@ final class AiPromptResource extends Resource
     {
         return [
             'index' => ListAiPrompts::route('/'),
+            'create' => CreateAiPrompt::route('/create'),
             'edit' => EditAiPrompt::route('/{record}/edit'),
         ];
     }

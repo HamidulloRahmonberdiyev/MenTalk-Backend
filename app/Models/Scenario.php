@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Exceptions\ScenarioUnavailable;
 use Database\Factories\ScenarioFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -33,5 +34,23 @@ final class Scenario extends Model
     public function conversations(): HasMany
     {
         return $this->hasMany(Conversation::class);
+    }
+
+    /** One per language the scenario can be played in. */
+    public function briefs(): HasMany
+    {
+        return $this->hasMany(ScenarioBrief::class);
+    }
+
+    public function isPlayableIn(string $language): bool
+    {
+        return $this->briefs()->where('language', $language)->exists();
+    }
+
+    /** @throws ScenarioUnavailable */
+    public function briefFor(string $language): ScenarioBrief
+    {
+        return $this->briefs()->where('language', $language)->first()
+            ?? throw new ScenarioUnavailable($this->id, $language);
     }
 }

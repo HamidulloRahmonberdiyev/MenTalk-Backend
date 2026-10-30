@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\AiPrompts\Tables;
 
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -21,6 +22,7 @@ final class AiPromptsTable
             ])
             ->recordActions([
                 EditAction::make(),
+                DeleteAction::make(),
             ]);
     }
 }

@@ -6,16 +6,22 @@ namespace App\Providers;
 
 use App\Contracts\AiClient;
 use App\Contracts\IdentityVerifier;
+use App\Contracts\LanguageCatalog;
 use App\Contracts\SpeechSynthesizer;
 use App\Models\AiPrompt;
+use App\Models\Language;
 use App\Models\Scenario;
+use App\Models\ScenarioBrief;
 use App\Observers\AiPromptObserver;
+use App\Observers\LanguageObserver;
+use App\Observers\ScenarioBriefObserver;
 use App\Observers\ScenarioObserver;
 use App\Services\Ai\GeminiClient;
 use App\Services\Ai\GeminiTransport;
 use App\Services\Ai\KeyPool;
 use App\Services\Ai\MeteredAiClient;
 use App\Services\Auth\GoogleIdentityVerifier;
+use App\Services\Languages\CachedLanguageCatalog;
 use App\Services\Speech\CachedSynthesizer;
 use App\Services\Speech\GeminiSynthesizer;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -37,6 +43,8 @@ final class AppServiceProvider extends ServiceProvider
             new GeminiSynthesizer($app->make(GeminiTransport::class), config('ai.tts_model')),
         ));
         $this->app->bind(IdentityVerifier::class, fn () => new GoogleIdentityVerifier(config('ai.google_client_ids')));
+        // Holds only configuration; the language data itself lives in the cache, so a singleton is safe under Octane.
+        $this->app->singleton(LanguageCatalog::class, fn () => new CachedLanguageCatalog(config('languages.default')));
     }
 
     public function boot(): void
@@ -48,5 +56,7 @@ final class AppServiceProvider extends ServiceProvider
 
         AiPrompt::observe(AiPromptObserver::class);
         Scenario::observe(ScenarioObserver::class);
+        ScenarioBrief::observe(ScenarioBriefObserver::class);
+        Language::observe(LanguageObserver::class);
     }
 }

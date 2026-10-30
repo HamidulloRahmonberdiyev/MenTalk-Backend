@@ -50,7 +50,10 @@ final class ApiTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
 
-        $first = $this->getJson('/api/v1/bootstrap')->assertOk()->assertJsonPath('scenarios.0.id', 'cafe');
+        $first = $this->getJson('/api/v1/bootstrap')->assertOk()->assertJsonPath('scenarios.0.id', 'intro')
+            ->assertJsonPath('scenarios.0.languages', ['ru', 'en'])
+            ->assertJsonPath('languages.1.code', 'en')
+            ->assertJsonPath('default_language', 'ru');
         $this->getJson('/api/v1/bootstrap', ['If-None-Match' => $first->headers->get('ETag')])->assertStatus(304);
     }
 

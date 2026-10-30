@@ -77,9 +77,15 @@ Ilova ochilganda chaqiring. Javob `ETag` bilan keshlanadi (5 daqiqa) — `If-Non
       "gradient": ["#...", "#..."],
       "image_url": "https://.../storage/scenarios/cafe.jpg",
       "title": "At the café",
-      "subtitle": "Order a coffee"
+      "subtitle": "Order a coffee",
+      "languages": ["ru", "en"]           // shu tillarda o'ynash mumkin
     }
   ],
+  "languages": [                          // o'rgatiladigan tillar (admin paneldan qo'shiladi)
+    { "code": "ru", "title": { "uz": "Rus tili", "ru": "Русский", "en": "Russian" }, "tutor_name": "Anna" },
+    { "code": "en", "title": { "uz": "Ingliz tili", "ru": "Английский", "en": "English" }, "tutor_name": "Emma" }
+  ],
+  "default_language": "ru",
   "levels": ["beginner", "elementary", "intermediate", "advanced"],
   "goals": ["travel", "work", "study", "relocation", "family", "fun"],
   "features": { "translator": true, "vocabulary_sync": true, "hints": true },
@@ -90,7 +96,8 @@ Ilova ochilganda chaqiring. Javob `ETag` bilan keshlanadi (5 daqiqa) — `If-Non
 **Nima qilish kerak:**
 - `min_app_version` > o'rnatilgan versiya bo'lsa — "Ilovani yangilang" ekranini ko'rsating.
 - `features` orqali funksiyalarni yoqing/o'chiring (masalan, `hints: false` bo'lsa maslahat tugmasini yashiring).
-- `scenarios` — bosh ekrandagi suhbat mavzulari.
+- `scenarios` — bosh ekrandagi suhbat mavzulari. Faqat `languages` ichida foydalanuvchi o'rganayotgan til bor stsenariylarni ko'rsating.
+- `languages` — onboarding va profildagi "Qaysi tilni o'rganasiz?" tanlovi. Ro'yxat serverdan keladi: yangi til qo'shilsa, ilovani yangilash shart emas (til paketi ilovada bo'lsa).
 
 ---
 
@@ -136,7 +143,8 @@ await SecureStore.setItemAsync('token', data.data.token);
   "birth_date": "2000-05-20",
   "level": "beginner",           // beginner|elementary|intermediate|advanced | null
   "goals": ["travel", "work"],
-  "ui_language": "uz",           // "uz" | "ru" | "en"
+  "ui_language": "uz",           // "uz" | "ru" | "en" — interfeys tili
+  "target_language": "ru",       // o'rganilayotgan til: bootstrap'dagi languages[].code
   "timezone": "Asia/Tashkent",
   "daily_goal_minutes": 15,
   "xp": 120,
@@ -171,10 +179,11 @@ Google orqali kirganda `avatar_url` Google rasmiga (512 px) o'rnatiladi; foydala
 | `level` | `beginner`/`elementary`/`intermediate`/`advanced` / `null` |
 | `goals` | massiv, max 6 ta, har biri string (max 24) |
 | `ui_language` | `uz` / `ru` / `en` |
+| `target_language` | faol o'rgatiladigan til kodi (`ru`, `en`, …) |
 | `timezone` | IANA (`Asia/Tashkent`) |
 | `daily_goal_minutes` | 1–240 |
 
-Onboarding tugagach shu endpoint bilan `level`, `goals`, `daily_goal_minutes`, `timezone` ni yuboring.
+Onboarding tugagach shu endpoint bilan `target_language`, `level`, `goals`, `daily_goal_minutes`, `timezone` ni yuboring.
 
 ---
 
@@ -195,12 +204,13 @@ Hamma `/conversations*`, `/translate`, `/vocabulary/lookup` endpointlariga **lim
 
 ```json
 // Request
-{ "scenario_id": "cafe" }
+{ "scenario_id": "cafe", "target_language": "en" }   // target_language ixtiyoriy
 
 // Response 201
 {
   "data": {
     "conversation_id": 42,
+    "target_language": "en",
     "id": 100,
     "transcript": null,
     "reply": "Hi! What would you like to drink?",
@@ -210,6 +220,10 @@ Hamma `/conversations*`, `/translate`, `/vocabulary/lookup` endpointlariga **lim
   }
 }
 ```
+
+- `target_language` yuborilmasa, profildagi `target_language` olinadi (eski ilova versiyalari uchun).
+- Til suhbatga yoziladi: foydalanuvchi keyin tilni almashtirsa ham, boshlangan suhbat o'z tilida davom etadi. Maslahat va baholash ham shu tilda.
+- Stsenariy shu tilda bo'lmasa — `404 scenario_unavailable`; til o'chirilgan bo'lsa — `422 unsupported_language`.
 
 ### `POST /conversations/{id}/turns` — gap yuborish
 
@@ -291,6 +305,7 @@ Kursor bo'yicha sahifalash (20 tadan). Javob Laravel `cursorPaginate` formatida:
     {
       "id": 42,
       "scenario_id": "cafe",
+      "target_language": "ru",
       "state": "finished",          // "active" | "finished"
       "score": 71,
       "learner_turns": 6,
@@ -327,7 +342,7 @@ Keyingi sahifa: `GET /history?cursor=<next_cursor>` (`useInfiniteQuery` bilan qu
 ### `POST /translate`
 ```json
 // Request
-{ "text": "Where is the station?", "language": "uz" }   // language: uz | ru | en
+{ "text": "Where is the station?", "language": "uz" }   // language: uz | ru | en yoki o'rgatiladigan til kodi
 // Response
 { "data": { "translation": "Bekat qayerda?" } }
 ```
@@ -336,11 +351,11 @@ Keyingi sahifa: `GET /history?cursor=<next_cursor>` (`useInfiniteQuery` bilan qu
 Matndagi so'zga bosilganda chaqiring. Natija 90 kun keshlanadi.
 ```json
 // Request
-{ "word": "running", "sentence": "He is running to the bus.", "language": "uz" }
+{ "word": "running", "sentence": "He is running to the bus.", "language": "uz", "target_language": "en" }
 // Response
 { "data": { "form": "run", "translation": "yugurmoq" } }
 ```
-`form` — so'zning asosiy shakli (lemma).
+`form` — so'zning asosiy shakli (lemma). `language` — ma'no qaysi tilda tushuntirilsin (interfeys tili), `target_language` — so'z qaysi tilniki (yuborilmasa `default_language`). Ikkalasi bir xil bo'lsa (masalan, ingliz interfeysida ingliz so'zi), tarjima o'rniga shu tildagi qisqa izoh qaytadi.
 
 ### `POST /vocabulary/sync` — kartalarni sinxronlash (offline-first)
 
@@ -353,6 +368,7 @@ Kartalar telefonda lokal saqlanadi; server bilan **kursor asosida ikki tomonlama
   "changes": [
     {
       "word": "latte",
+      "language": "en",                      // so'z qaysi tilniki; yuborilmasa default_language
       "translation": "latte",
       "example": "I'd like a latte.",
       "form": "latte",
@@ -378,7 +394,8 @@ Kartalar telefonda lokal saqlanadi; server bilan **kursor asosida ikki tomonlama
 Qoidalar:
 - `changes` — faqat oxirgi sinxrondan keyin **lokal o'zgargan** kartalar (max 500). Bo'lmasa `[]` yuboring (maydon majburiy).
 - O'chirish: `deleted: true` (kartani butunlay olib tashlamang, avval sinxronlang).
-- Bir so'z (`word`) bitta kartadir; `changes` ichida takror bo'lsa bittasi olinadi.
+- Karta `language` + `word` juftligi bilan aniqlanadi: bir xil yozilgan so'z ikki tilda — ikki karta. `changes` ichida takror bo'lsa bittasi olinadi.
+- Barcha tillardagi kartalar sinxronlanadi (o'chirilgan tilniki ham); ilova joriy tilnikini ko'rsatadi.
 - Qaytgan `cards` ni lokal DB'ga yozing, `cursor` ni saqlang.
 - Ilova ochilganda, foreground'ga qaytganda va o'zgarishdan keyin (debounce bilan) sinxronlang.
 
@@ -390,7 +407,7 @@ Takrorlash sessiyasi tugagach yuboring (1–30 ta javob). XP beradi.
 // Request
 {
   "answers": [
-    { "word": "latte", "correct": true, "answered_at": "2026-10-10T08:10:00+00:00" }
+    { "word": "latte", "language": "en", "correct": true, "answered_at": "2026-10-10T08:10:00+00:00" }
   ]
 }
 // Response
@@ -405,8 +422,10 @@ Takrorlash sessiyasi tugagach yuboring (1–30 ta javob). XP beradi.
 |---|---|---|---|
 | 401 | — | Token yaroqsiz | Loginga qaytarish |
 | 403 | — | Bu suhbat sizniki emas | Xato ko'rsatish |
+| 404 | `scenario_unavailable` | Stsenariy yo'q, o'chirilgan yoki bu tilda hali yo'q | Bootstrap'ni yangilab, ro'yxatdan olib tashlash |
 | 409 | `turn_in_progress` | Oldingi gap hali qayta ishlanmoqda | Kuting, takror yubormang |
 | 422 | — | Validatsiya xatosi (`errors` maydonida) | Forma xatolarini ko'rsatish |
+| 422 | `unsupported_language` | Profildagi til o'chirilgan | Til tanlash ekranini ochish |
 | 429 | `quota` | Kunlik kvota tugadi | "Ertaga davom eting" ekrani |
 | 429 | — | Tezlik limiti (`throttle`) | `Retry-After` dan keyin qayta urinish |
 | 502 | `turn_failed` | AI javobni rad etdi | Qayta yuborishni taklif qilish |

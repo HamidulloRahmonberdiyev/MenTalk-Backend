@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Vocabulary;
 
 use App\Models\User;
+use App\Models\VocabCard;
 use App\Services\Progress\ProgressTracker;
 use App\Support\CardState;
 use App\Support\Srs;
@@ -18,15 +19,16 @@ final readonly class ReviewCards
 
     public function __construct(private ProgressTracker $progress) {}
 
+    /** @param list<array{word: string, language: string, correct: bool, answered_at: string}> $answers */
     public function __invoke(User $user, array $answers): int
     {
         $answers = collect($answers)->take(self::MAX_ANSWERS)->sortBy('answered_at')->values();
-        $cards = $user->cards()->whereIn('word', $answers->pluck('word'))->get()->keyBy('word');
+        $cards = $user->cards()->whereIn('word', $answers->pluck('word'))->get()->keyBy(fn (VocabCard $card) => $card->identity());
         $xp = Xp::forRound($answers->pluck('correct')->map(fn ($c) => (bool) $c)->all());
 
         DB::transaction(function () use ($answers, $cards, $user, $xp) {
             foreach ($answers as $answer) {
-                $card = $cards->get($answer['word']);
+                $card = $cards->get(VocabCard::identityOf($answer['language'], $answer['word']));
 
                 if ($card === null) {
                     continue;

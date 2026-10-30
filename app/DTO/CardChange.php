@@ -10,6 +10,7 @@ final readonly class CardChange
 {
     public function __construct(
         public string $word,
+        public string $language,
         public string $translation,
         public ?string $example,
         public ?string $form,
@@ -21,10 +22,12 @@ final readonly class CardChange
         public bool $deleted,
     ) {}
 
-    public static function fromArray(array $data): self
+    /** @param string $defaultLanguage for clients that predate multi-language cards */
+    public static function fromArray(array $data, string $defaultLanguage): self
     {
         return new self(
             $data['word'],
+            $data['language'] ?? $defaultLanguage,
             $data['translation'],
             $data['example'] ?? null,
             $data['form'] ?? null,
@@ -42,6 +45,7 @@ final readonly class CardChange
         return [
             'id' => $id,
             'user_id' => $userId,
+            'language' => $this->language,
             'word' => $this->word,
             'translation' => $this->translation,
             'example' => $this->example,

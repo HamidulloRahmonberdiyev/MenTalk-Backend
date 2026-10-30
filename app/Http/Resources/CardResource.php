@@ -13,6 +13,7 @@ final class CardResource extends JsonResource
     {
         return [
             'word' => $this->word,
+            'language' => $this->language,
             'translation' => $this->translation,
             'example' => $this->example,
             'form' => $this->form,

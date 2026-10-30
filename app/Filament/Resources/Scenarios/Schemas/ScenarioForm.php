@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Scenarios\Schemas;
 
+use App\Models\Language;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -76,16 +78,31 @@ final class ScenarioForm
                 ]),
 
             Section::make('AI uchun')
-                ->description('Tutor shu matnga tayanib rol o\'ynaydi. Foydalanuvchiga ko\'rsatilmaydi.')
+                ->description('Har bir til uchun alohida: stsenariy faqat shu yerda qo\'shilgan tillarda ochiladi. Foydalanuvchiga ko\'rsatilmaydi.')
                 ->schema([
-                    Textarea::make('brief')
-                        ->label('Rol va vaziyat (ingliz tilida)')
-                        ->required()
-                        ->rows(5),
-                    Textarea::make('next_topics')
-                        ->label('Suhbat yo\'nalishlari')
-                        ->required()
-                        ->rows(3),
+                    Repeater::make('briefs')
+                        ->label('Tillar')
+                        ->relationship()
+                        ->minItems(1)
+                        ->defaultItems(1)
+                        ->collapsible()
+                        ->itemLabel(fn (array $state) => $state['language'] ?? null)
+                        ->schema([
+                            Select::make('language')
+                                ->label('Til')
+                                ->options(fn () => Language::query()->orderBy('sort')->pluck('name', 'code')->all())
+                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->required(),
+                            Textarea::make('brief')
+                                ->label('Rol va vaziyat (ingliz tilida)')
+                                ->helperText('{tutor} o\'rniga tilning tutori ismi qo\'yiladi.')
+                                ->required()
+                                ->rows(4),
+                            Textarea::make('next_topics')
+                                ->label('Suhbat yo\'nalishlari')
+                                ->required()
+                                ->rows(2),
+                        ]),
                 ]),
         ]);
     }

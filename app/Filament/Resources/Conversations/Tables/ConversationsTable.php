@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Conversations\Tables;
 
 use App\Enums\ConversationState;
+use App\Models\Language;
 use App\Models\Scenario;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -24,6 +25,7 @@ final class ConversationsTable
             ->columns([
                 TextColumn::make('user.name')->label('Foydalanuvchi')->searchable()->description(fn ($record) => $record->user->email),
                 TextColumn::make('scenario.title.uz')->label('Stsenariy'),
+                TextColumn::make('target_language')->label('Til')->badge(),
                 TextColumn::make('state')->label('Holat')->badge()
                     ->formatStateUsing(fn (ConversationState $state) => $state === ConversationState::Active ? 'Faol' : 'Tugagan')
                     ->color(fn (ConversationState $state) => $state === ConversationState::Active ? 'warning' : 'success'),
@@ -36,6 +38,8 @@ final class ConversationsTable
             ->filters([
                 SelectFilter::make('scenario_id')->label('Stsenariy')
                     ->options(fn () => Scenario::query()->orderBy('sort')->get()->mapWithKeys(fn (Scenario $s) => [$s->id => $s->title['uz'] ?? $s->id])->all()),
+                SelectFilter::make('target_language')->label('Til')
+                    ->options(fn () => Language::query()->orderBy('sort')->pluck('name', 'code')->all()),
                 SelectFilter::make('state')->label('Holat')
                     ->options([ConversationState::Active->value => 'Faol', ConversationState::Finished->value => 'Tugagan']),
                 Filter::make('started')

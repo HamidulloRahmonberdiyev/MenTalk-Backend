@@ -17,6 +17,7 @@ final class ConversationInfolist
             Section::make('Suhbat')->columns(3)->schema([
                 TextEntry::make('user.name')->label('Foydalanuvchi'),
                 TextEntry::make('scenario.title.uz')->label('Stsenariy'),
+                TextEntry::make('target_language')->label('Til')->badge(),
                 TextEntry::make('state')->label('Holat')->badge(),
                 TextEntry::make('started_at')->label('Boshlangan')->dateTime('d.m.Y H:i'),
                 TextEntry::make('ended_at')->label('Tugagan')->dateTime('d.m.Y H:i')->placeholder('—'),

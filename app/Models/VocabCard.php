@@ -24,4 +24,15 @@ final class VocabCard extends Model
             'synced_at' => 'datetime',
         ];
     }
+
+    /** A word is unique per language: the same spelling in two languages is two cards. */
+    public static function identityOf(string $language, string $word): string
+    {
+        return "{$language}|{$word}";
+    }
+
+    public function identity(): string
+    {
+        return self::identityOf($this->language, $this->word);
+    }
 }

@@ -19,7 +19,7 @@ final class ScenariosTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('conversations'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('conversations')->with('briefs'))
             ->defaultSort('sort')
             ->reorderable('sort')
             ->columns([
@@ -27,6 +27,7 @@ final class ScenariosTable
                 TextColumn::make('id')->label('ID')->searchable()->badge(),
                 TextColumn::make('title.uz')->label('Nomi (uz)'),
                 TextColumn::make('title.en')->label('Nomi (en)')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('briefs.language')->label('Tillar')->badge(),
                 TextColumn::make('conversations_count')->label('Suhbatlar')->numeric()->sortable(),
                 ToggleColumn::make('active')->label('Faol'),
                 TextColumn::make('updated_at')->label('Yangilangan')->since()->toggleable(isToggledHiddenByDefault: true),

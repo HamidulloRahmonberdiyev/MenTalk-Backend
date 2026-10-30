@@ -14,10 +14,17 @@ final class StartConversationController extends Controller
 {
     public function __invoke(StartConversationRequest $request, StartConversation $start): JsonResponse
     {
-        [$conversation, $turn] = $start($request->user(), $request->string('scenario_id')->toString());
+        [$conversation, $turn] = $start(
+            $request->user(),
+            $request->string('scenario_id')->toString(),
+            $request->targetLanguage(),
+        );
 
         return response()->json([
-            'data' => ['conversation_id' => $conversation->id] + (new TurnResource($turn))->resolve(),
+            'data' => [
+                'conversation_id' => $conversation->id,
+                'target_language' => $conversation->target_language,
+            ] + (new TurnResource($turn))->resolve(),
         ], 201);
     }
 }

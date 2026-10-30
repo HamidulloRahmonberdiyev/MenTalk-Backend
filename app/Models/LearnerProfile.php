@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\Gender;
+use App\Enums\InterfaceLanguage;
 use App\Enums\Level;
 use Database\Factories\LearnerProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,10 +32,19 @@ final class LearnerProfile extends Model
         return [
             'gender' => Gender::class,
             'level' => Level::class,
+            'ui_language' => InterfaceLanguage::class,
             'goals' => 'array',
             'birth_date' => 'date',
             'last_active_on' => 'date',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // The database default is the historical 'ru'; new learners get the configured default.
+        self::creating(function (self $profile): void {
+            $profile->target_language ??= config('languages.default');
+        });
     }
 
     public function user(): BelongsTo
@@ -52,12 +62,8 @@ final class LearnerProfile extends Model
         ])->filter()->implode('; ') ?: 'no details provided';
     }
 
-    public function uiLanguageName(): string
+    public function interfaceLanguage(): InterfaceLanguage
     {
-        return match ($this->ui_language) {
-            'ru' => 'Russian',
-            'en' => 'English',
-            default => 'Uzbek',
-        };
+        return $this->ui_language ?? InterfaceLanguage::Uzbek;
     }
 }

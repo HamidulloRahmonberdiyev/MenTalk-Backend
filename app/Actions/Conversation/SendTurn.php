@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Conversation;
 
 use App\Contracts\AiClient;
+use App\Contracts\LanguageCatalog;
 use App\Contracts\SpeechSynthesizer;
 use App\DTO\AiRequest;
 use App\DTO\SpeechClip;
 use App\DTO\TurnInput;
 use App\DTO\TurnResult;
+use App\DTO\TutorLanguage;
 use App\Enums\TurnKind;
 use App\Models\Conversation;
 use App\Models\Turn;
@@ -26,23 +28,25 @@ final readonly class SendTurn
         private PromptBuilder $prompts,
         private SpeechSynthesizer $speech,
         private TurnHistory $history,
+        private LanguageCatalog $languages,
     ) {}
 
     public function __invoke(Conversation $conversation, TurnInput $input): Turn
     {
         $conversation->loadMissing(['scenario', 'user.profile']);
+        $language = $this->languages->get($conversation->target_language);
 
-        return Cache::lock("conversation:{$conversation->id}", 40)->block(3, function () use ($conversation, $input) {
+        return Cache::lock("conversation:{$conversation->id}", 40)->block(3, function () use ($conversation, $input, $language) {
             $request = new AiRequest(
-                system: $this->prompts->system($conversation->scenario, $conversation->user->profile),
+                system: $this->prompts->system($conversation, $language),
                 contents: [
                     ...$this->history->contents($conversation),
-                    ['role' => 'user', 'parts' => $this->prompts->userParts($input)],
+                    ['role' => 'user', 'parts' => $this->prompts->userParts($input, $language)],
                 ],
                 schema: TurnSchema::get(),
             );
             $result = TurnResult::from($this->ai->json($request));
-            $clip = $this->speak($result->reply);
+            $clip = $this->speak($result->reply, $language);
 
             return $this->history->append($conversation, $input, $result, $clip?->url)
                 ->setAttribute('audio_ms', $clip?->durationMs)
@@ -51,10 +55,10 @@ final readonly class SendTurn
     }
 
     /** Voice is a nice-to-have: without it the reply still goes out and the app reads it with the device voice. */
-    private function speak(string $text): ?SpeechClip
+    private function speak(string $text, TutorLanguage $language): ?SpeechClip
     {
         try {
-            return $this->speech->speak($text, config('ai.voice'));
+            return $this->speech->speak($text, $language->voice ?? config('ai.voice'));
         } catch (Throwable $e) {
             report($e);
 

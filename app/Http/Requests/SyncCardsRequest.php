@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Contracts\LanguageCatalog;
 use App\DTO\CardChange;
+use App\Rules\TaughtLanguage;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
@@ -17,6 +19,8 @@ final class SyncCardsRequest extends FormRequest
             'cursor' => ['nullable', 'date'],
             'changes' => ['present', 'array', 'max:500'],
             'changes.*.word' => ['required', 'string', 'max:64'],
+            // Cards of a language that was later switched off still sync.
+            'changes.*.language' => ['nullable', 'string', TaughtLanguage::make(includeSwitchedOff: true)],
             'changes.*.translation' => ['required', 'string', 'max:160'],
             'changes.*.example' => ['nullable', 'string', 'max:1000'],
             'changes.*.form' => ['nullable', 'string', 'max:64'],
@@ -35,11 +39,13 @@ final class SyncCardsRequest extends FormRequest
     }
 
     /** @return Collection<int, CardChange> */
-    public function changes(): Collection
+    public function changes(LanguageCatalog $languages): Collection
     {
+        $default = $languages->default()->code;
+
         return collect($this->validated('changes'))
-            ->unique('word')
-            ->map(fn (array $change) => CardChange::fromArray($change))
+            ->map(fn (array $change) => CardChange::fromArray($change, $default))
+            ->unique(fn (CardChange $change) => "{$change->language}|{$change->word}")
             ->values();
     }
 }

@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\Conversation;
 
 use App\Contracts\AiClient;
+use App\Contracts\LanguageCatalog;
 use App\DTO\AiRequest;
 use App\Enums\ConversationState;
+use App\Enums\InterfaceLanguage;
 use App\Models\Conversation;
 use App\Models\ConversationResult;
-use App\Services\Ai\PromptStore;
+use App\Services\Ai\Gloss;
+use App\Services\Ai\PromptRenderer;
 use App\Services\Ai\Schemas\EvaluationSchema;
 use App\Services\Conversation\Transcript;
 use App\Services\Progress\ProgressTracker;
@@ -20,7 +23,8 @@ final readonly class FinishConversation
 {
     public function __construct(
         private AiClient $ai,
-        private PromptStore $prompts,
+        private PromptRenderer $prompts,
+        private LanguageCatalog $languages,
         private ProgressTracker $progress,
     ) {}
 
@@ -55,8 +59,12 @@ final readonly class FinishConversation
 
     private function evaluate(Conversation $conversation): array
     {
+        $conversation->loadMissing('user.profile');
+        $language = $this->languages->get($conversation->target_language);
+        $interface = $conversation->user->profile?->interfaceLanguage() ?? InterfaceLanguage::Uzbek;
+
         $raw = $this->ai->json(new AiRequest(
-            system: $this->prompts->get('evaluation'),
+            system: $this->prompts->render('evaluation', $language, ['{gloss}' => Gloss::for($interface, $language)]),
             contents: [['role' => 'user', 'parts' => [['text' => Transcript::of($conversation)]]]],
             schema: EvaluationSchema::get(),
             temperature: 0.2,
