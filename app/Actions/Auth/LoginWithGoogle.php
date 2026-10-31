@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Contracts\IdentityVerifier;
+use App\Enums\InterfaceLanguage;
 use App\Exceptions\AccountBlocked;
 use App\Models\User;
 
@@ -15,7 +16,7 @@ final readonly class LoginWithGoogle
     public function __construct(private IdentityVerifier $verifier) {}
 
     /** @return array{0: User, 1: string} */
-    public function __invoke(string $idToken, string $device): array
+    public function __invoke(string $idToken, string $device, ?InterfaceLanguage $language = null): array
     {
         $identity = $this->verifier->verify($idToken);
 
@@ -31,7 +32,8 @@ final readonly class LoginWithGoogle
             $user->restore();
         }
 
-        $user->profile()->firstOrCreate([]);
+        // A new profile starts in the language the app was already showing; a returning user keeps theirs.
+        $user->profile()->firstOrCreate([], array_filter(['ui_language' => $language]));
 
         return [$user, $user->createToken($device, ['*'], now()->addDays(self::TOKEN_DAYS))->plainTextToken];
     }

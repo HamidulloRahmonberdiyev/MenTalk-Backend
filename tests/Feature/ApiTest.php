@@ -247,4 +247,72 @@ final class ApiTest extends TestCase
 
         Storage::disk(User::AVATAR_DISK)->assertMissing($path);
     }
+
+    public function test_onboarding_stores_the_placement_result_and_learning_background(): void
+    {
+        $user = $this->user();
+
+        $this->actingAs($user)->putJson('/api/v1/me', [
+            'level' => 'intermediate',
+            'level_source' => 'placement',
+            'placement_score' => 75,
+            'experience' => 'courses',
+            'focus' => ['speaking', 'confidence'],
+        ])->assertOk()
+            ->assertJsonPath('data.level', 'intermediate')
+            ->assertJsonPath('data.level_source', 'placement')
+            ->assertJsonPath('data.placement_score', 75)
+            ->assertJsonPath('data.experience', 'courses')
+            ->assertJsonPath('data.focus', ['speaking', 'confidence']);
+
+        $profile = $user->profile->refresh();
+        $this->assertNotNull($profile->placed_at);
+        $this->assertStringContainsString('level: intermediate (placement test, 75% correct)', $profile->describe());
+        $this->assertStringContainsString('wants to work on: speaking, confidence', $profile->describe());
+    }
+
+    public function test_picking_a_level_by_hand_replaces_the_placement_result(): void
+    {
+        $user = $this->user();
+        $this->actingAs($user)->putJson('/api/v1/me', ['level' => 'elementary', 'level_source' => 'placement', 'placement_score' => 40])->assertOk();
+
+        // Saving the profile again with the same level keeps the test result.
+        $this->actingAs($user)->putJson('/api/v1/me', ['level' => 'elementary', 'name' => 'Ali'])
+            ->assertOk()->assertJsonPath('data.placement_score', 40);
+
+        $this->actingAs($user)->putJson('/api/v1/me', ['level' => 'advanced'])->assertOk()
+            ->assertJsonPath('data.level_source', 'self')
+            ->assertJsonPath('data.placement_score', null);
+        $this->assertNull($user->profile->refresh()->placed_at);
+    }
+
+    public function test_placement_score_needs_a_placement_source(): void
+    {
+        $user = $this->user();
+
+        $this->actingAs($user)->putJson('/api/v1/me', ['level' => 'advanced', 'placement_score' => 90])
+            ->assertUnprocessable()->assertJsonValidationErrors('placement_score');
+        $this->actingAs($user)->putJson('/api/v1/me', ['level' => 'advanced', 'level_source' => 'placement'])
+            ->assertUnprocessable()->assertJsonValidationErrors('placement_score');
+        $this->actingAs($user)->putJson('/api/v1/me', ['focus' => ['speaking', 'dancing'], 'experience' => 'tv'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['focus.1', 'experience']);
+    }
+
+    public function test_a_new_profile_starts_in_the_phone_language_and_a_returning_one_keeps_its_own(): void
+    {
+        $this->app->instance(IdentityVerifier::class, new class implements IdentityVerifier
+        {
+            public function verify(string $idToken): Identity
+            {
+                return new Identity('g-1', 'a@b.test', 'Ali');
+            }
+        });
+        $login = fn (string $language) => $this->postJson('/api/v1/auth/google', ['id_token' => 'x', 'device' => 'Pixel', 'ui_language' => $language]);
+
+        $token = $login('en')->assertOk()->assertJsonPath('data.user.ui_language', 'en')->json('data.token');
+        $this->withToken($token)->putJson('/api/v1/me', ['ui_language' => 'ru'])->assertOk();
+
+        $login('en')->assertOk()->assertJsonPath('data.user.ui_language', 'ru');
+        $login('fr')->assertUnprocessable()->assertJsonValidationErrors('ui_language');
+    }
 }

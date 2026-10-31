@@ -88,6 +88,8 @@ Ilova ochilganda chaqiring. Javob `ETag` bilan keshlanadi (5 daqiqa) — `If-Non
   "default_language": "ru",
   "levels": ["beginner", "elementary", "intermediate", "advanced"],
   "goals": ["travel", "work", "study", "relocation", "family", "fun"],
+  "experiences": ["none", "school", "self_taught", "courses", "immersion"],
+  "focus": ["speaking", "listening", "vocabulary", "grammar", "pronunciation", "confidence"],
   "features": { "translator": true, "vocabulary_sync": true, "hints": true },
   "min_app_version": "1.0.0"
 }
@@ -109,7 +111,9 @@ Google'dan olingan `idToken` ni yuboring.
 
 ```json
 // Request
-{ "id_token": "<google idToken>", "device": "Pixel 8 / Android 15" }
+{ "id_token": "<google idToken>", "device": "Pixel 8 / Android 15", "ui_language": "ru" }
+// ui_language (ixtiyoriy): telefon tili. Faqat yangi profil yaratilganda qo'llanadi;
+// mavjud foydalanuvchining tanlagan tili o'zgarmaydi.
 
 // Response 200
 {
@@ -142,7 +146,11 @@ await SecureStore.setItemAsync('token', data.data.token);
   "country": "UZ",               // ISO-2 | null
   "birth_date": "2000-05-20",
   "level": "beginner",           // beginner|elementary|intermediate|advanced | null
+  "level_source": "placement",   // "placement" (test natijasi) | "self" (o'zi tanlagan) | null
+  "placement_score": 75,         // test natijasi, % (0–100) | null
+  "experience": "courses",       // bootstrap'dagi experiences[] | null
   "goals": ["travel", "work"],
+  "focus": ["speaking"],         // bootstrap'dagi focus[] — qiynalayotgan ko'nikmalar
   "ui_language": "uz",           // "uz" | "ru" | "en" — interfeys tili
   "target_language": "ru",       // o'rganilayotgan til: bootstrap'dagi languages[].code
   "timezone": "Asia/Tashkent",
@@ -177,13 +185,19 @@ Google orqali kirganda `avatar_url` Google rasmiga (512 px) o'rnatiladi; foydala
 | `country` | 2 harfli kod / `null` |
 | `birth_date` | sana, bugundan oldin / `null` |
 | `level` | `beginner`/`elementary`/`intermediate`/`advanced` / `null` |
+| `level_source` | `placement` / `self` / `null` |
+| `placement_score` | 0–100 (% to'g'ri javob). `level_source: placement` bo'lsa majburiy, boshqa holatda yuborilmaydi |
+| `experience` | `none`/`school`/`self_taught`/`courses`/`immersion` / `null` |
 | `goals` | massiv, max 6 ta, har biri string (max 24) |
+| `focus` | massiv, takrorlanmas: `speaking`/`listening`/`vocabulary`/`grammar`/`pronunciation`/`confidence` |
 | `ui_language` | `uz` / `ru` / `en` |
 | `target_language` | faol o'rgatiladigan til kodi (`ru`, `en`, …) |
 | `timezone` | IANA (`Asia/Tashkent`) |
 | `daily_goal_minutes` | 1–240 |
 
-Onboarding tugagach shu endpoint bilan `target_language`, `level`, `goals`, `daily_goal_minutes`, `timezone` ni yuboring.
+Onboarding tugagach shu endpoint bilan `target_language`, `level`, `level_source` (+ `placement_score`), `experience`, `goals`, `focus`, `daily_goal_minutes`, `timezone` ni yuboring.
+
+Daraja testi ilova ichida o'tadi (savollar ilovada, internet kerak emas); server natijani saqlaydi va vaqtini (`placed_at`) belgilaydi. `level_source`siz boshqa `level` yuborilsa, u qo'lda tanlangan hisoblanadi: `level_source` `self` bo'ladi, test natijasi tozalanadi. `experience`, `focus` va test natijasi AI tutor promptiga (`{learner}`) qo'shiladi.
 
 ---
 

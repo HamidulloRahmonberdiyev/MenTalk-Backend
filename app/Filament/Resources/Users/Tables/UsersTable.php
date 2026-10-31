@@ -29,7 +29,8 @@ final class UsersTable
                 ImageColumn::make('avatar_url')->label('')->circular()->imageSize(36),
                 TextColumn::make('name')->label('Ism')->searchable()->description(fn (User $record) => $record->email),
                 TextColumn::make('email')->searchable()->hidden(),
-                TextColumn::make('profile.level')->label('Daraja')->badge()->placeholder('—'),
+                TextColumn::make('profile.level')->label('Daraja')->badge()->placeholder('—')
+                    ->description(fn (User $record) => $record->profile?->placement_score !== null ? "Test: {$record->profile->placement_score}%" : null),
                 TextColumn::make('profile.xp')->label('XP')->numeric()->placeholder('0'),
                 TextColumn::make('profile.streak')->label('Seriya')->suffix(' kun')->placeholder('0'),
                 TextColumn::make('conversations_count')->label('Suhbatlar')->numeric()->sortable(),
