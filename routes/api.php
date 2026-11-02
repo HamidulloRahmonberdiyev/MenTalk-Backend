@@ -18,8 +18,8 @@ use App\Http\Controllers\TranslateController;
 use App\Http\Controllers\UpdateAvatarController;
 use App\Http\Controllers\UpdateProfileController;
 use App\Http\Controllers\Vocabulary\LookupWordController;
-use App\Http\Controllers\Vocabulary\ReviewCardsController;
-use App\Http\Controllers\Vocabulary\SyncCardsController;
+use App\Http\Controllers\Vocabulary\RecordReviewsController;
+use App\Http\Controllers\Vocabulary\SyncUserWordsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -35,8 +35,8 @@ Route::prefix('v1')->group(function () {
         Route::delete('me/avatar', DeleteAvatarController::class);
         Route::get('history', HistoryController::class);
         Route::get('stats', StatsController::class);
-        Route::post('vocabulary/sync', SyncCardsController::class);
-        Route::post('vocabulary/reviews', ReviewCardsController::class);
+        Route::post('vocabulary/sync', SyncUserWordsController::class);
+        Route::post('vocabulary/reviews', RecordReviewsController::class);
 
         Route::middleware('throttle:ai')->group(function () {
             Route::post('conversations', StartConversationController::class)->middleware('quota:turns');

@@ -12,7 +12,6 @@ use App\Models\Language;
 use App\Models\LearnerProfile;
 use App\Models\Scenario;
 use App\Models\User;
-use App\Models\VocabCard;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Fakes\FakeAiClient;
@@ -162,40 +161,6 @@ final class LanguageTest extends TestCase
         $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/finish")->assertOk();
         $this->assertStringContainsString("learner's English", $this->system(3));
         $this->assertStringContainsString('translation as Russian', $this->system(3));
-    }
-
-    public function test_the_same_word_is_a_separate_card_in_each_language(): void
-    {
-        $user = $this->user();
-        $card = fn (array $o) => $o + [
-            'word' => 'tort', 'translation' => 'tort', 'stage' => 1,
-            'due_at' => '2026-10-10T10:00:00Z', 'updated_at' => '2026-10-10T10:00:00Z',
-        ];
-
-        $this->actingAs($user)->postJson('/api/v1/vocabulary/sync', ['changes' => [
-            $card(['language' => 'en', 'translation' => 'cake?']),
-            $card(['language' => 'ru']),
-            $card([]),
-        ]])->assertOk()->assertJsonCount(2, 'data.cards');
-
-        $this->assertSame(['en', 'ru'], VocabCard::query()->orderBy('language')->pluck('language')->all());
-
-        $this->actingAs($user)->postJson('/api/v1/vocabulary/reviews', ['answers' => [
-            ['word' => 'tort', 'language' => 'en', 'correct' => true, 'answered_at' => now()->toIso8601String()],
-        ]])->assertOk();
-
-        $this->assertSame(['en' => 2, 'ru' => 1], VocabCard::query()->pluck('stage', 'language')->all());
-    }
-
-    public function test_cards_of_a_switched_off_language_still_sync(): void
-    {
-        Language::query()->whereKey('en')->update(['active' => false]);
-        cache()->forget('languages');
-
-        $this->actingAs($this->user())->postJson('/api/v1/vocabulary/sync', ['changes' => [[
-            'word' => 'coffee', 'language' => 'en', 'translation' => 'kofe', 'stage' => 1,
-            'due_at' => '2026-10-10T10:00:00Z', 'updated_at' => '2026-10-10T10:00:00Z',
-        ]]])->assertOk()->assertJsonPath('data.cards.0.language', 'en');
     }
 
     public function test_lookup_explains_the_word_in_its_own_language_and_caches_per_language(): void

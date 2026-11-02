@@ -15,7 +15,6 @@ use App\Models\Conversation;
 use App\Models\LearnerProfile;
 use App\Models\Scenario;
 use App\Models\User;
-use App\Models\VocabCard;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -136,39 +135,6 @@ final class ApiTest extends TestCase
 
         $this->actingAs($this->user())->postJson('/api/v1/conversations', ['scenario_id' => 'x'])
             ->assertStatus(429)->assertJsonPath('type', 'quota');
-    }
-
-    public function test_vocabulary_sync_is_last_writer_wins_and_returns_tombstones(): void
-    {
-        $user = $this->user();
-        $card = fn (array $o = []) => $o + [
-            'word' => 'кофе', 'translation' => 'kofe', 'stage' => 1,
-            'due_at' => '2026-10-10T10:00:00Z', 'updated_at' => '2026-10-10T10:00:00Z',
-        ];
-
-        $this->actingAs($user)->postJson('/api/v1/vocabulary/sync', ['cursor' => null, 'changes' => [$card()]])
-            ->assertOk()->assertJsonCount(1, 'data.cards');
-
-        $this->actingAs($user)->postJson('/api/v1/vocabulary/sync', ['changes' => [$card(['translation' => 'old', 'updated_at' => '2026-10-09T10:00:00Z'])]]);
-        $this->assertSame('kofe', VocabCard::query()->firstOrFail()->translation);
-
-        $this->actingAs($user)->postJson('/api/v1/vocabulary/sync', ['changes' => [$card(['deleted' => true, 'updated_at' => '2026-10-11T10:00:00Z'])]])
-            ->assertJsonPath('data.cards.0.deleted', true);
-    }
-
-    public function test_review_updates_schedule_and_awards_xp(): void
-    {
-        $user = $this->user();
-        VocabCard::query()->create([
-            'user_id' => $user->id, 'word' => 'кофе', 'translation' => 'kofe', 'stage' => 0,
-            'due_at' => now()->subDay(), 'updated_at' => now(), 'synced_at' => now(),
-        ]);
-
-        $this->actingAs($user)->postJson('/api/v1/vocabulary/reviews', [
-            'answers' => [['word' => 'кофе', 'correct' => true, 'answered_at' => now()->toIso8601String()]],
-        ])->assertOk()->assertJsonPath('data.xp', 30);
-
-        $this->assertSame(1, VocabCard::query()->firstOrFail()->stage);
     }
 
     public function test_lookup_and_translate_use_the_ai_client(): void

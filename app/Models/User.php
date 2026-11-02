@@ -10,6 +10,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -73,8 +74,19 @@ final class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Conversation::class);
     }
 
-    public function cards(): HasMany
+    /** The words on the learner's list, with their schedule as `pivot`. */
+    public function words(): BelongsToMany
     {
-        return $this->hasMany(VocabCard::class);
+        return $this->belongsToMany(Word::class, 'user_words')
+            ->using(UserWord::class)
+            ->withPivot(['id', 'translation_word_id', 'status', 'ease', 'interval_days', 'repetitions', 'lapses', 'due_at', 'last_reviewed_at', 'source', 'context_sentence', 'form'])
+            ->withTimestamps()
+            ->wherePivotNull('deleted_at');
+    }
+
+    /** The same rows as `words()`, as models of their own: what sync and reviews work with. */
+    public function userWords(): HasMany
+    {
+        return $this->hasMany(UserWord::class);
     }
 }
