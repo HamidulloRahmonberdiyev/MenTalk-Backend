@@ -16,6 +16,7 @@ use App\Http\Controllers\Notifications\DeleteNotificationsController;
 use App\Http\Controllers\Notifications\ListNotificationsController;
 use App\Http\Controllers\Notifications\MarkNotificationsReadController;
 use App\Http\Controllers\Notifications\UnreadCountController;
+use App\Http\Controllers\PathController;
 use App\Http\Controllers\ShowProfileController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\TranslateController;
@@ -38,6 +39,7 @@ Route::prefix('v1')->group(function () {
         Route::post('me/avatar', UpdateAvatarController::class)->middleware('throttle:10,1');
         Route::delete('me/avatar', DeleteAvatarController::class);
         Route::get('history', HistoryController::class);
+        Route::get('path', PathController::class);
         Route::get('stats', StatsController::class);
         Route::post('vocabulary/sync', SyncUserWordsController::class);
         Route::post('vocabulary/reviews', RecordReviewsController::class);
