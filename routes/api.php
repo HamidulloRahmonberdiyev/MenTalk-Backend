@@ -12,6 +12,10 @@ use App\Http\Controllers\Conversation\StoreTurnController;
 use App\Http\Controllers\DeleteAccountController;
 use App\Http\Controllers\DeleteAvatarController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\Notifications\DeleteNotificationsController;
+use App\Http\Controllers\Notifications\ListNotificationsController;
+use App\Http\Controllers\Notifications\MarkNotificationsReadController;
+use App\Http\Controllers\Notifications\UnreadCountController;
 use App\Http\Controllers\ShowProfileController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\TranslateController;
@@ -37,6 +41,11 @@ Route::prefix('v1')->group(function () {
         Route::get('stats', StatsController::class);
         Route::post('vocabulary/sync', SyncUserWordsController::class);
         Route::post('vocabulary/reviews', RecordReviewsController::class);
+
+        Route::get('notifications', ListNotificationsController::class);
+        Route::get('notifications/unread-count', UnreadCountController::class);
+        Route::post('notifications/read', MarkNotificationsReadController::class);
+        Route::post('notifications/delete', DeleteNotificationsController::class);
 
         Route::middleware('throttle:ai')->group(function () {
             Route::post('conversations', StartConversationController::class)->middleware('quota:turns');

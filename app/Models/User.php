@@ -13,15 +13,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 final class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasUlids, SoftDeletes;
+    use HasApiTokens, HasFactory, HasUlids, Notifiable, SoftDeletes;
 
     public const AVATAR_DISK = 'avatars';
 
@@ -43,7 +45,17 @@ final class User extends Authenticatable implements FilamentUser
 
     protected static function booted(): void
     {
-        self::forceDeleted(fn (self $user) => Storage::disk(self::AVATAR_DISK)->deleteDirectory($user->id));
+        self::forceDeleted(function (self $user): void {
+            Storage::disk(self::AVATAR_DISK)->deleteDirectory($user->id);
+            // A polymorphic relation has no foreign key to cascade through.
+            $user->notifications()->delete();
+        });
+    }
+
+    /** The in-app inbox, newest first. Overrides Notifiable's to use the prunable model. */
+    public function notifications(): MorphMany
+    {
+        return $this->morphMany(DatabaseNotification::class, 'notifiable')->latest();
     }
 
     /** The uploaded photo, otherwise the Google one. */

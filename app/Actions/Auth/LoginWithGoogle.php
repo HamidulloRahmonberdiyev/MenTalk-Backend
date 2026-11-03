@@ -8,6 +8,7 @@ use App\Contracts\IdentityVerifier;
 use App\Enums\InterfaceLanguage;
 use App\Exceptions\AccountBlocked;
 use App\Models\User;
+use App\Notifications\Welcome;
 
 final readonly class LoginWithGoogle
 {
@@ -34,6 +35,10 @@ final readonly class LoginWithGoogle
 
         // A new profile starts in the language the app was already showing; a returning user keeps theirs.
         $user->profile()->firstOrCreate([], array_filter(['ui_language' => $language]));
+
+        if ($user->wasRecentlyCreated) {
+            $user->notify(new Welcome);
+        }
 
         return [$user, $user->createToken($device, ['*'], now()->addDays(self::TOKEN_DAYS))->plainTextToken];
     }

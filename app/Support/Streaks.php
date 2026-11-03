@@ -16,4 +16,9 @@ final class Streaks
             default => 1,
         };
     }
+
+    public static function isMilestone(int $streak): bool
+    {
+        return in_array($streak, config('notifications.streak_milestones'), true);
+    }
 }

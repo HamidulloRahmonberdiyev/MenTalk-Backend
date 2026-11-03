@@ -430,6 +430,66 @@ Takrorlash sessiyasi tugagach yuboring (1–30 ta javob). XP beradi.
 
 ---
 
+## 7.1. Bildirishnomalar (in-app inbox)
+
+Server matnni **o'qilayotgan paytda** foydalanuvchi tilida yig'adi: kalit + parametrlar (tizim hodisalari) yoki admin yozgan uz/ru/en matn (e'lonlar) saqlanadi. Shuning uchun ilova tilini almashtirgach ro'yxatni qayta so'rash kifoya.
+
+| `type` | `kind` | Qachon |
+|---|---|---|
+| `welcome` | `lesson` | Yangi akkaunt yaratilganda (bir marta) |
+| `streak_milestone` | `achievement` | Seriya 3, 7, 14, 30, 50, 100… kunga yetganda |
+| `streak_at_risk` | `streak` | Kecha mashq qilgan, bugun hali yo'q — mahalliy soat 19:00 da |
+| `words_due` | `review` | ≥5 so'z takrorlash vaqti kelgan — mahalliy soat 19:00 da |
+| `announcement` | admin tanlaydi | Admin panel → **Kontent → E'lonlar** dan yuborilganda |
+
+Eslatma kuniga ko'pi bilan bitta; bugun mashq qilganlar va 14 kundan beri kirmaganlarga yuborilmaydi. 90 kundan eski yozuvlar avtomatik o'chiriladi (`model:prune`).
+
+### `GET /notifications?limit=30&lang=uz&cursor=…`
+
+`limit` 1–50 (standart 30). `lang` ixtiyoriy: berilmasa profildagi `ui_language`.
+
+```json
+{
+  "data": [
+    {
+      "id": "9b2f…-uuid",
+      "type": "streak_at_risk",
+      "kind": "streak",                 // streak | review | achievement | lesson | pronunciation | news
+      "title": "5 kunlik seriyangizni saqlang!",
+      "body": "Bugun hali mashq qilmadingiz…",
+      "action": { "target": "scenarios", "label": "Suhbatni boshlash" },   // yoki null
+      "read": false,
+      "created_at": "2026-11-03T14:00:00+00:00"
+    }
+  ],
+  "links": { "next": null },
+  "meta": { "next_cursor": null, "per_page": 30, "unread_count": 3 }
+}
+```
+
+`action.target` — ekran nomi, yo'l emas: `scenarios | words | practice | pronunciation | translate`. Ilova bilmagan nomni e'tiborsiz qoldiradi.
+
+### `GET /notifications/unread-count`
+
+```json
+{ "data": { "unread_count": 3 } }
+```
+
+### `POST /notifications/read` · `POST /notifications/delete`
+
+```json
+{ "ids": ["uuid", "uuid"] }                                   // 100 tagacha
+{ "all": true, "before": "2026-11-03T14:00:00+00:00" }        // hammasi (before — ixtiyoriy)
+// Response
+{ "data": { "unread_count": 0 } }
+```
+
+Ikkalasi idempotent: o'qilgan, o'chirilgan yoki birovning id'si jim o'tkazib yuboriladi — offline navbatdan qayta yuborish xavfsiz. `before` — ro'yxat ko'rilgandan keyin kelgan yangi bildirishnoma "hammasini o'qish/o'chirish" bilan birga ketib qolmasligi uchun.
+
+> Server: cron'da `php artisan schedule:run` har daqiqa ishlashi va queue worker (`php artisan queue:work`) yoqilgan bo'lishi shart.
+
+---
+
 ## 8. Xatolar va limitlar
 
 | Status | `type` | Ma'nosi | Ilova harakati |
