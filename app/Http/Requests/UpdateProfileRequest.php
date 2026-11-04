@@ -10,6 +10,7 @@ use App\Enums\Gender;
 use App\Enums\InterfaceLanguage;
 use App\Enums\Level;
 use App\Enums\LevelSource;
+use App\Enums\ReferralSource;
 use App\Rules\TaughtLanguage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,6 +33,7 @@ final class UpdateProfileRequest extends FormRequest
                 'nullable', 'integer', 'between:0,100',
             ],
             'experience' => ['sometimes', 'nullable', Rule::enum(Experience::class)],
+            'referral_source' => ['sometimes', 'nullable', Rule::enum(ReferralSource::class)],
             'focus' => ['sometimes', 'array', 'max:6'],
             'focus.*' => ['distinct', Rule::enum(Focus::class)],
             'goals' => ['sometimes', 'array', 'max:6'],

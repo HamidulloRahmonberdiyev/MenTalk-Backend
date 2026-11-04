@@ -89,6 +89,7 @@ Ilova ochilganda chaqiring. Javob `ETag` bilan keshlanadi (5 daqiqa) — `If-Non
   "levels": ["beginner", "elementary", "intermediate", "advanced"],
   "goals": ["travel", "work", "study", "relocation", "family", "fun"],
   "experiences": ["none", "school", "self_taught", "courses", "immersion"],
+  "referral_sources": ["instagram", "telegram", "tiktok", "youtube", "friend", "search", "store", "other"],
   "focus": ["speaking", "listening", "vocabulary", "grammar", "pronunciation", "confidence"],
   "features": { "translator": true, "vocabulary_sync": true, "hints": true },
   "min_app_version": "1.0.0"
@@ -149,6 +150,7 @@ await SecureStore.setItemAsync('token', data.data.token);
   "level_source": "placement",   // "placement" (test natijasi) | "self" (o'zi tanlagan) | null
   "placement_score": 75,         // test natijasi, % (0–100) | null
   "experience": "courses",       // bootstrap'dagi experiences[] | null
+  "referral_source": "telegram", // bootstrap'dagi referral_sources[] | null
   "goals": ["travel", "work"],
   "focus": ["speaking"],         // bootstrap'dagi focus[] — qiynalayotgan ko'nikmalar
   "ui_language": "uz",           // "uz" | "ru" | "en" — interfeys tili
@@ -188,6 +190,7 @@ Google orqali kirganda `avatar_url` Google rasmiga (512 px) o'rnatiladi; foydala
 | `level_source` | `placement` / `self` / `null` |
 | `placement_score` | 0–100 (% to'g'ri javob). `level_source: placement` bo'lsa majburiy, boshqa holatda yuborilmaydi |
 | `experience` | `none`/`school`/`self_taught`/`courses`/`immersion` / `null` |
+| `referral_source` | `instagram`/`telegram`/`tiktok`/`youtube`/`friend`/`search`/`store`/`other` / `null` |
 | `goals` | massiv, max 6 ta, har biri string (max 24) |
 | `focus` | massiv, takrorlanmas: `speaking`/`listening`/`vocabulary`/`grammar`/`pronunciation`/`confidence` |
 | `ui_language` | `uz` / `ru` / `en` |
@@ -195,7 +198,7 @@ Google orqali kirganda `avatar_url` Google rasmiga (512 px) o'rnatiladi; foydala
 | `timezone` | IANA (`Asia/Tashkent`) |
 | `daily_goal_minutes` | 1–240 |
 
-Onboarding tugagach shu endpoint bilan `target_language`, `level`, `level_source` (+ `placement_score`), `experience`, `goals`, `focus`, `daily_goal_minutes`, `timezone` ni yuboring.
+Onboarding tugagach shu endpoint bilan `target_language`, `level`, `level_source` (+ `placement_score`), `experience`, `referral_source`, `goals`, `focus`, `daily_goal_minutes`, `timezone` ni yuboring.
 
 Daraja testi ilova ichida o'tadi (savollar ilovada, internet kerak emas); server natijani saqlaydi va vaqtini (`placed_at`) belgilaydi. `level_source`siz boshqa `level` yuborilsa, u qo'lda tanlangan hisoblanadi: `level_source` `self` bo'ladi, test natijasi tozalanadi. `experience`, `focus` va test natijasi AI tutor promptiga (`{learner}`) qo'shiladi.
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Enums\ReferralSource;
 use App\Filament\Resources\Users\UserActions;
 use App\Http\Middleware\DailyQuota;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -31,6 +33,7 @@ final class UsersTable
                 TextColumn::make('email')->searchable()->hidden(),
                 TextColumn::make('profile.level')->label('Daraja')->badge()->placeholder('—')
                     ->description(fn (User $record) => $record->profile?->placement_score !== null ? "Test: {$record->profile->placement_score}%" : null),
+                TextColumn::make('profile.referral_source')->label('Qayerdan')->badge()->placeholder('—')->toggleable(),
                 TextColumn::make('profile.xp')->label('XP')->numeric()->placeholder('0'),
                 TextColumn::make('profile.streak')->label('Seriya')->suffix(' kun')->placeholder('0'),
                 TextColumn::make('conversations_count')->label('Suhbatlar')->numeric()->sortable(),
@@ -47,6 +50,13 @@ final class UsersTable
                 TextColumn::make('created_at')->label('Ro\'yxatdan o\'tgan')->dateTime('d.m.Y')->sortable()->toggleable(),
             ])
             ->filters([
+                SelectFilter::make('referral_source')
+                    ->label('Qayerdan')
+                    ->options(ReferralSource::class)
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn (Builder $query, string $source) => $query->whereHas('profile', fn (Builder $profile) => $profile->where('referral_source', $source)),
+                    )),
                 TernaryFilter::make('blocked')
                     ->label('Bloklangan')
                     ->queries(

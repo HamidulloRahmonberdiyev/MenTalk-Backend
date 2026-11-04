@@ -9,6 +9,7 @@ use App\Enums\Gender;
 use App\Enums\InterfaceLanguage;
 use App\Enums\Level;
 use App\Enums\LevelSource;
+use App\Enums\ReferralSource;
 use Database\Factories\LearnerProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -36,6 +37,7 @@ final class LearnerProfile extends Model
             'level' => Level::class,
             'level_source' => LevelSource::class,
             'experience' => Experience::class,
+            'referral_source' => ReferralSource::class,
             'focus' => 'array',
             'placement_score' => 'integer',
             'placed_at' => 'datetime',

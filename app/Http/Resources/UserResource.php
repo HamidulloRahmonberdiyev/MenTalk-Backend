@@ -26,6 +26,7 @@ final class UserResource extends JsonResource
             'level_source' => $profile?->level_source?->value,
             'placement_score' => $profile?->placement_score,
             'experience' => $profile?->experience?->value,
+            'referral_source' => $profile?->referral_source?->value,
             'goals' => $profile?->goals ?? [],
             'focus' => $profile?->focus ?? [],
             'ui_language' => $profile?->ui_language?->value,

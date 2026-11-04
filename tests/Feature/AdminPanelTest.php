@@ -14,6 +14,7 @@ use App\Filament\Resources\Scenarios\Pages\CreateScenario;
 use App\Filament\Resources\Scenarios\Pages\ListScenarios;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Filament\Widgets\ReferralSourcesChart;
 use App\Http\Middleware\DailyQuota;
 use App\Models\AiPrompt;
 use App\Models\Conversation;
@@ -47,6 +48,23 @@ final class AdminPanelTest extends TestCase
         parent::setUp();
 
         Filament::setCurrentPanel('admin');
+    }
+
+    public function test_users_can_be_filtered_by_where_they_heard_of_the_app(): void
+    {
+        $fromTelegram = User::factory()->create();
+        $fromTelegram->profile()->updateOrCreate([], ['referral_source' => 'telegram']);
+        $fromInstagram = User::factory()->create();
+        $fromInstagram->profile()->updateOrCreate([], ['referral_source' => 'instagram']);
+
+        $this->actingAs($this->admin());
+
+        Livewire::test(ListUsers::class)
+            ->filterTable('referral_source', 'telegram')
+            ->assertCanSeeTableRecords([$fromTelegram])
+            ->assertCanNotSeeTableRecords([$fromInstagram]);
+
+        Livewire::test(ReferralSourcesChart::class)->assertOk();
     }
 
     public function test_admin_seeder_is_idempotent_and_can_log_in(): void

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\Experience;
 use App\Enums\Focus;
 use App\Enums\Level;
+use App\Enums\ReferralSource;
 use App\Http\Resources\LanguageResource;
 use App\Http\Resources\ScenarioResource;
 use App\Models\Language;
@@ -27,6 +28,7 @@ final class BootstrapController extends Controller
             'levels' => array_column(Level::cases(), 'value'),
             'goals' => ['travel', 'work', 'study', 'relocation', 'family', 'fun'],
             'experiences' => array_column(Experience::cases(), 'value'),
+            'referral_sources' => array_column(ReferralSource::cases(), 'value'),
             'focus' => array_column(Focus::cases(), 'value'),
             'features' => config('features'),
             'min_app_version' => config('app.min_version'),

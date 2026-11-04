@@ -9,6 +9,7 @@ use App\Contracts\IdentityVerifier;
 use App\Contracts\SpeechSynthesizer;
 use App\DTO\Identity;
 use App\DTO\SpeechClip;
+use App\Enums\ReferralSource;
 use App\Exceptions\AiUnavailable;
 use App\Jobs\PurgeUserData;
 use App\Models\Conversation;
@@ -212,6 +213,19 @@ final class ApiTest extends TestCase
             ->assertOk()->assertJsonPath('data.avatar_url', 'https://lh3.googleusercontent.com/a/x');
 
         Storage::disk(User::AVATAR_DISK)->assertMissing($path);
+    }
+
+    public function test_onboarding_stores_where_the_learner_heard_of_the_app(): void
+    {
+        $user = $this->user();
+
+        $this->actingAs($user)->putJson('/api/v1/me', ['referral_source' => 'telegram'])
+            ->assertOk()->assertJsonPath('data.referral_source', 'telegram');
+
+        $this->assertSame(ReferralSource::Telegram, $user->profile->refresh()->referral_source);
+
+        $this->actingAs($user)->putJson('/api/v1/me', ['referral_source' => 'billboard'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['referral_source']);
     }
 
     public function test_onboarding_stores_the_placement_result_and_learning_background(): void
