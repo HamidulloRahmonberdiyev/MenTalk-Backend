@@ -3,6 +3,7 @@
 use App\Exceptions\AccountBlocked;
 use App\Exceptions\AiRejected;
 use App\Exceptions\AiUnavailable;
+use App\Exceptions\CertificateNotEarned;
 use App\Exceptions\ScenarioUnavailable;
 use App\Exceptions\UnsupportedLanguage;
 use App\Http\Middleware\DailyQuota;
@@ -34,4 +35,5 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(fn (AiRejected $e) => Problem::make(502, 'turn_failed'));
         $exceptions->render(fn (UnsupportedLanguage $e) => Problem::make(422, 'unsupported_language'));
         $exceptions->render(fn (ScenarioUnavailable $e) => Problem::make(404, 'scenario_unavailable'));
+        $exceptions->render(fn (CertificateNotEarned $e) => Problem::make(422, 'certificate_not_earned'));
     })->create();

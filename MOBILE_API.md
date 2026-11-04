@@ -563,3 +563,15 @@ function errorType(e: any): string | undefined {
 - **Xavfsizlik:** tokenni `AsyncStorage`da emas, Keychain/SecureStore'da saqlang.
 - **Ruxsatlar:** Android `RECORD_AUDIO`, iOS `NSMicrophoneUsageDescription`.
 - **Offline:** lug'at offline ishlaydi (sinxron keyin); suhbat va tarjima internet talab qiladi.
+
+## Sertifikat
+
+Sertifikat o'quvchining haqiqiy natijalaridan yaratiladi. Shartlar (`config/certificate.php`): daraja testi topshirilgan (`level_source: placement`) va o'rganilayotgan tilda kamida 5 ta baholangan suhbat (har biri kamida 3 ta javob bilan). Ballar oxirgi 10 ta suhbatning o'rtachasi. Har bir til va daraja uchun bitta sertifikat beriladi; ism va ballar berilgan paytdagidek saqlanadi.
+
+| Metod | Yo'l | Tavsif |
+| --- | --- | --- |
+| `GET` | `/certificate` | Holat: `level`, `cefr`, `placed`, `conversations`, `required_conversations`, `scores`, `eligible`, `certificate` (oxirgi berilgani yoki `null`) |
+| `POST` | `/certificate` | Joriy daraja uchun sertifikat beradi (`201`), avval berilgan bo'lsa o'shani qaytaradi (`200`). Shartlar bajarilmagan bo'lsa `422 certificate_not_earned` |
+| `GET` | `/certificate/{serial}/document` | `{ "html": "..." }`. Faqat egasiga. Ilova shu HTML'dan telefonda PDF yaratadi |
+
+Ochiq tekshiruv sahifasi (API emas, avtorizatsiyasiz): `GET /verify/{serial}`. QR kod shu manzilga olib boradi. Akkaunt o'chirilsa sahifa `404` qaytaradi.

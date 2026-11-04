@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\BootstrapController;
+use App\Http\Controllers\Certificate\CertificateDocumentController;
+use App\Http\Controllers\Certificate\IssueCertificateController;
+use App\Http\Controllers\Certificate\ShowCertificateController;
 use App\Http\Controllers\Conversation\FinishConversationController;
 use App\Http\Controllers\Conversation\HintController;
 use App\Http\Controllers\Conversation\StartConversationController;
@@ -50,6 +53,10 @@ Route::prefix('v1')->group(function () {
         Route::post('notifications/read', MarkNotificationsReadController::class);
         Route::post('notifications/delete', DeleteNotificationsController::class);
         Route::post('me/push-token', RegisterPushTokenController::class)->middleware('throttle:30,1');
+
+        Route::get('certificate', ShowCertificateController::class);
+        Route::post('certificate', IssueCertificateController::class)->middleware('throttle:10,1');
+        Route::get('certificate/{serial}/document', CertificateDocumentController::class)->middleware('throttle:10,1');
 
         Route::middleware('throttle:ai')->group(function () {
             Route::post('conversations', StartConversationController::class)->middleware('quota:turns');
