@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\NotificationType;
 use App\Models\Announcement;
 use App\Models\User;
+use App\Services\Push\ExpoPushClient;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
@@ -44,7 +45,8 @@ final class SendAnnouncement implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $data = json_encode($announcement->message()->toArray(), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $message = $announcement->message();
+        $data = json_encode($message->toArray(), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $morph = (new User)->getMorphClass();
         $now = now();
         $sent = 0;
@@ -55,9 +57,15 @@ final class SendAnnouncement implements ShouldBeUnique, ShouldQueue
                 'profile', fn ($profile) => $profile->where('ui_language', $language->value),
             ))
             ->select('id')
-            ->chunkById(self::CHUNK, function (Collection $users) use ($announcement, $data, $morph, $now, &$sent) {
+            ->chunkById(self::CHUNK, function (Collection $users) use ($announcement, $message, $data, $morph, $now, &$sent) {
+                $ids = $users->toBase()->mapWithKeys(fn (User $user) => [
+                    $user->id => Uuid::uuid5(Uuid::NAMESPACE_URL, "mentalk:announcement:{$announcement->id}:{$user->id}")->toString(),
+                ]);
+                // Rows from an earlier attempt were pushed then; a retry must not ring those phones again.
+                $delivered = DB::table('notifications')->whereIn('id', $ids->values())->pluck('id')->flip();
+
                 DB::table('notifications')->insertOrIgnore($users->map(fn (User $user) => [
-                    'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "mentalk:announcement:{$announcement->id}:{$user->id}")->toString(),
+                    'id' => $ids[$user->id],
                     'type' => NotificationType::Announcement->value,
                     'notifiable_type' => $morph,
                     'notifiable_id' => $user->id,
@@ -66,6 +74,12 @@ final class SendAnnouncement implements ShouldBeUnique, ShouldQueue
                     'created_at' => $now,
                     'updated_at' => $now,
                 ])->all());
+
+                // Own jobs, so Expo being down neither fails the announcement nor delays the inbox.
+                $ids->reject(fn (string $id) => $delivered->has($id))
+                    ->chunk(ExpoPushClient::MAX_MESSAGES)
+                    ->each(fn ($recipients) => SendPush::dispatch($recipients->all(), $message));
+
                 // Counted by learner, not by inserted row: after a retry the earlier rows are already there.
                 $sent += $users->count();
             });

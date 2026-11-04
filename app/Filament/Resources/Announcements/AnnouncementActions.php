@@ -20,7 +20,7 @@ final class AnnouncementActions
             ->color('success')
             ->requiresConfirmation()
             ->modalHeading("E'lonni yuborish")
-            ->modalDescription("E'lon tanlangan foydalanuvchilarning bildirishnomalariga tushadi. Yuborilgandan keyin uni o'zgartirib yoki qaytarib bo'lmaydi.")
+            ->modalDescription("E'lon tanlangan foydalanuvchilarning bildirishnomalariga tushadi va telefoniga push bo'lib boradi. Yuborilgandan keyin uni o'zgartirib yoki qaytarib bo'lmaydi.")
             ->visible(fn (Announcement $record) => ! $record->isDispatched())
             ->action(function (Announcement $record): void {
                 // Claimed atomically, so a double click (or two admins) sends it once.

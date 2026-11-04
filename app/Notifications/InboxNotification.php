@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use App\DTO\NotificationMessage;
 use App\Enums\NotificationType;
+use App\Notifications\Channels\ExpoPushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -15,7 +16,8 @@ use Illuminate\Notifications\Notification;
  * transaction commits, so a rolled-back action never leaves a notification behind and the
  * request that triggered it does not wait for the insert.
  *
- * To add push later: return 'expo' (or 'fcm') from `via()` next to 'database'.
+ * Everything but the daily reminders also goes to the learner's phone as a push. Reminders stay in
+ * the inbox: the app schedules its own on the device, and a second one from here would be a duplicate.
  */
 abstract class InboxNotification extends Notification implements ShouldQueue
 {
@@ -33,7 +35,7 @@ abstract class InboxNotification extends Notification implements ShouldQueue
     /** @return list<string> */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return in_array($this->type(), NotificationType::REMINDERS, true) ? ['database'] : ['database', ExpoPushChannel::class];
     }
 
     public function databaseType(object $notifiable): string

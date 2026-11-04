@@ -15,6 +15,7 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Notifications\DeleteNotificationsController;
 use App\Http\Controllers\Notifications\ListNotificationsController;
 use App\Http\Controllers\Notifications\MarkNotificationsReadController;
+use App\Http\Controllers\Notifications\RegisterPushTokenController;
 use App\Http\Controllers\Notifications\UnreadCountController;
 use App\Http\Controllers\PathController;
 use App\Http\Controllers\ShowProfileController;
@@ -48,6 +49,7 @@ Route::prefix('v1')->group(function () {
         Route::get('notifications/unread-count', UnreadCountController::class);
         Route::post('notifications/read', MarkNotificationsReadController::class);
         Route::post('notifications/delete', DeleteNotificationsController::class);
+        Route::post('me/push-token', RegisterPushTokenController::class)->middleware('throttle:30,1');
 
         Route::middleware('throttle:ai')->group(function () {
             Route::post('conversations', StartConversationController::class)->middleware('quota:turns');

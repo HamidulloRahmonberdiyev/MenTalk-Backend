@@ -486,6 +486,27 @@ Eslatma kuniga ko'pi bilan bitta; bugun mashq qilganlar va 14 kundan beri kirmag
 
 Ikkalasi idempotent: o'qilgan, o'chirilgan yoki birovning id'si jim o'tkazib yuboriladi — offline navbatdan qayta yuborish xavfsiz. `before` — ro'yxat ko'rilgandan keyin kelgan yangi bildirishnoma "hammasini o'qish/o'chirish" bilan birga ketib qolmasligi uchun.
 
+### `POST /me/push-token`
+
+Qurilmani push olish uchun ro'yxatdan o'tkazadi. Ilova uni har kirishda va token yangilanganda chaqiradi; takror yuborish xavfsiz.
+
+```json
+{ "token": "ExponentPushToken[xxxx]", "platform": "android" }   // platform: android | ios
+// Response: 204
+```
+
+Token shu sessiyaga bog'lanadi: `DELETE /auth/session` yoki hisob o'chirilsa, u ham o'chadi. Bitta qurilmaga boshqa odam kirsa, token unga o'tadi.
+
+Push `welcome`, `streak_milestone` va `announcement` uchun yuboriladi. `streak_at_risk` va `words_due` faqat inboxga tushadi, chunki ilova bu eslatmalarni qurilmada o'zi rejalashtiradi.
+
+Push `data`si:
+
+```json
+{ "source": "mentalk-push", "id": "uuid", "kind": "news", "action": "words" }   // action null bo'lishi mumkin
+```
+
+Android kanali: `inbox`. Ilova uni o'zi yaratadi.
+
 > Server: cron'da `php artisan schedule:run` har daqiqa ishlashi va queue worker (`php artisan queue:work`) yoqilgan bo'lishi shart.
 
 ---
