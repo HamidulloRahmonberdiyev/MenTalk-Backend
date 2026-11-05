@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\Scenario;
+use App\Modules\Conversation\Models\Scenario;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 final class ScenarioFactory extends Factory
 {
+    protected $model = Scenario::class;
+
     public function definition(): array
     {
         return [

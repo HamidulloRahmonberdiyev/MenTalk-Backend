@@ -20,7 +20,7 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $t) {
             $t->uuid('id')->primary();
-            // A stable name (App\Enums\NotificationType), not a class name, so refactors keep old rows readable.
+            // A stable name (App\Modules\Notification\Enums\NotificationType), not a class name, so refactors keep old rows readable.
             $t->string('type', 32);
             $t->ulidMorphs('notifiable');
             $t->json('data');

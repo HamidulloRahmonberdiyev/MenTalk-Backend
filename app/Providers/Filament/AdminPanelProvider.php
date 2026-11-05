@@ -24,7 +24,7 @@ final class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        return $this->discoverModuleResources($panel)
             ->default()
             ->id('admin')
             ->domain(config('admin.domain'))
@@ -37,12 +37,10 @@ final class AdminPanelProvider extends PanelProvider
             ->navigationGroups(['Kontent', 'Foydalanuvchilar'])
             ->sidebarCollapsibleOnDesktop()
             ->unsavedChangesAlerts()
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            ->discoverWidgets(in: app_path('Modules/Admin/Filament/Widgets'), for: 'App\Modules\Admin\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
             ])
@@ -60,5 +58,17 @@ final class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    /** Each module keeps its admin screens in its own `Filament/Resources`. */
+    private function discoverModuleResources(Panel $panel): Panel
+    {
+        foreach (glob(app_path('Modules/*/Filament/Resources'), GLOB_ONLYDIR) as $resources) {
+            $module = basename(dirname($resources, 2));
+
+            $panel->discoverResources(in: $resources, for: "App\\Modules\\{$module}\\Filament\\Resources");
+        }
+
+        return $panel;
     }
 }

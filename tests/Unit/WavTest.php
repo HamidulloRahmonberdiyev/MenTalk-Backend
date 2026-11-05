@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Services\Speech\Wav;
+use App\Modules\Speech\Services\Wav;
 use PHPUnit\Framework\TestCase;
 
 final class WavTest extends TestCase

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Enums\ReviewRating;
-use App\Enums\WordStatus;
-use App\Support\ReviewState;
-use App\Support\Srs;
-use App\Support\Streaks;
-use App\Support\Text;
-use App\Support\Xp;
+use App\Modules\Progress\Support\Streaks;
+use App\Modules\Progress\Support\Xp;
+use App\Modules\Vocabulary\Enums\ReviewRating;
+use App\Modules\Vocabulary\Enums\WordStatus;
+use App\Modules\Vocabulary\Support\ReviewState;
+use App\Modules\Vocabulary\Support\Srs;
+use App\Shared\Support\Text;
 use Carbon\CarbonImmutable;
 use PHPUnit\Framework\TestCase;
 

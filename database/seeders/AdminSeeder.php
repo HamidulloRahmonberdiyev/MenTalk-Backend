@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Modules\Account\Models\User;
 use Illuminate\Database\Seeder;
 
 /** Creates or promotes the first admin from ADMIN_EMAIL / ADMIN_PASSWORD. Safe to run repeatedly. */
@@ -25,7 +25,7 @@ final class AdminSeeder extends Seeder
 
         if (! $user->exists) {
             $user->fill([
-                'google_id' => 'admin:' . str()->uuid(),
+                'google_id' => 'admin:'.str()->uuid(),
                 'name' => config('admin.seed.name'),
             ]);
         }

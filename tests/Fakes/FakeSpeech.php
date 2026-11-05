@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Fakes;
 
-use App\Contracts\SpeechSynthesizer;
-use App\DTO\SpeechClip;
+use App\Modules\Speech\Contracts\SpeechSynthesizer;
+use App\Modules\Speech\DTO\SpeechClip;
 
 final class FakeSpeech implements SpeechSynthesizer
 {

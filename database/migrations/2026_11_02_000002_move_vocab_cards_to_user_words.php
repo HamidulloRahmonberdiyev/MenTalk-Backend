@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\Vocabulary\WordNormalizer;
+use App\Modules\Vocabulary\Services\WordNormalizer;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;

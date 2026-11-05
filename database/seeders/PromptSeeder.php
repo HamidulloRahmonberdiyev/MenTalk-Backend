@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\AiPrompt;
+use App\Modules\Ai\Models\AiPrompt;
 use Illuminate\Database\Seeder;
 
 /**

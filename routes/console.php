@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\DatabaseNotification;
+use App\Modules\Notification\Models\DatabaseNotification;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;

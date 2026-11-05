@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Enums\ConversationState;
-use App\Models\Certificate;
-use App\Models\Conversation;
-use App\Models\LearnerProfile;
-use App\Models\Scenario;
-use App\Models\User;
+use App\Modules\Account\Models\LearnerProfile;
+use App\Modules\Account\Models\User;
+use App\Modules\Certificate\Models\Certificate;
+use App\Modules\Conversation\Enums\ConversationState;
+use App\Modules\Conversation\Models\Conversation;
+use App\Modules\Conversation\Models\Scenario;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

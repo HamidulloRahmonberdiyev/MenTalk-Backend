@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Actions\Auth\DeleteAccount;
-use App\Enums\NotificationKind;
-use App\Jobs\SendAnnouncement;
-use App\Models\Announcement;
-use App\Models\DatabaseNotification;
-use App\Models\LearnerProfile;
-use App\Models\PushToken;
-use App\Models\User;
-use App\Notifications\StreakAtRisk;
-use App\Notifications\StreakMilestone;
-use App\Notifications\WordsDue;
+use App\Modules\Account\Actions\DeleteAccount;
+use App\Modules\Account\Models\LearnerProfile;
+use App\Modules\Account\Models\User;
+use App\Modules\Notification\Enums\NotificationKind;
+use App\Modules\Notification\Jobs\SendAnnouncement;
+use App\Modules\Notification\Models\Announcement;
+use App\Modules\Notification\Models\DatabaseNotification;
+use App\Modules\Notification\Models\PushToken;
+use App\Modules\Notification\Notifications\StreakAtRisk;
+use App\Modules\Notification\Notifications\StreakMilestone;
+use App\Modules\Notification\Notifications\WordsDue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;

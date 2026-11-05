@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Contracts\AiClient;
-use App\Contracts\SpeechSynthesizer;
-use App\DTO\SpeechClip;
-use App\Models\Conversation;
-use App\Models\Language;
-use App\Models\LearnerProfile;
-use App\Models\Scenario;
-use App\Models\User;
+use App\Modules\Account\Models\LearnerProfile;
+use App\Modules\Account\Models\User;
+use App\Modules\Ai\Contracts\AiClient;
+use App\Modules\Conversation\Models\Conversation;
+use App\Modules\Conversation\Models\Scenario;
+use App\Modules\Language\Models\Language;
+use App\Modules\Speech\Contracts\SpeechSynthesizer;
+use App\Modules\Speech\DTO\SpeechClip;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Fakes\FakeAiClient;

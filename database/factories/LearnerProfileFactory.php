@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\LearnerProfile;
-use App\Models\User;
+use App\Modules\Account\Models\LearnerProfile;
+use App\Modules\Account\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 final class LearnerProfileFactory extends Factory
 {
+    protected $model = LearnerProfile::class;
+
     public function definition(): array
     {
         return [

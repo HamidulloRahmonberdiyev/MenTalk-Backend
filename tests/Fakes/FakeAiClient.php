@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Fakes;
 
-use App\Contracts\AiClient;
-use App\DTO\AiRequest;
+use App\Modules\Ai\Contracts\AiClient;
+use App\Modules\Ai\DTO\AiRequest;
 
 final class FakeAiClient implements AiClient
 {

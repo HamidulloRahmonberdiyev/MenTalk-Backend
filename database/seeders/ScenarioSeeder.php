@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\Scenario;
+use App\Modules\Conversation\Models\Scenario;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\Conversation;
-use App\Models\Scenario;
-use App\Models\User;
+use App\Modules\Account\Models\User;
+use App\Modules\Conversation\Models\Conversation;
+use App\Modules\Conversation\Models\Scenario;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 final class ConversationFactory extends Factory
 {
+    protected $model = Conversation::class;
+
     public function definition(): array
     {
         return [

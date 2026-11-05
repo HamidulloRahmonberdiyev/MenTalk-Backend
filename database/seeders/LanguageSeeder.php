@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\Language;
+use App\Modules\Language\Models\Language;
 use Illuminate\Database\Seeder;
 
 /** The languages the app ships with. Further languages are added in the admin panel. */
