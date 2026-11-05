@@ -24,9 +24,7 @@ final class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $this->discoverModuleResources($panel)
-            ->default()
-            ->id('admin')
+        return $this->discoverModuleResources($panel->default()->id('admin'))
             ->domain(config('admin.domain'))
             ->path(config('admin.path'))
             ->brandName('MenTalk Admin')

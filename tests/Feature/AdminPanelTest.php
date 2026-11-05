@@ -20,15 +20,18 @@ use App\Modules\Conversation\Models\Scenario;
 use App\Modules\Language\Contracts\LanguageCatalog;
 use App\Modules\Language\Filament\Resources\Languages\Pages\CreateLanguage;
 use App\Modules\Language\Filament\Resources\Languages\Pages\ListLanguages;
+use App\Providers\Filament\AdminPanelProvider;
 use App\Shared\Http\Middleware\DailyQuota;
 use Database\Seeders\AdminSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\LanguageSeeder;
 use Filament\Facades\Filament;
+use Filament\Panel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use ReflectionProperty;
 use Tests\TestCase;
 
 final class AdminPanelTest extends TestCase
@@ -48,6 +51,17 @@ final class AdminPanelTest extends TestCase
         parent::setUp();
 
         Filament::setCurrentPanel('admin');
+    }
+
+    /** Filament only reads its component cache, which needs the panel id, outside the console. */
+    public function test_panel_builds_during_a_web_request(): void
+    {
+        (new ReflectionProperty($this->app, 'isRunningInConsole'))->setValue($this->app, false);
+
+        $panel = (new AdminPanelProvider($this->app))->panel(Panel::make());
+
+        $this->assertSame('admin', $panel->getId());
+        $this->assertNotEmpty($panel->getResources());
     }
 
     public function test_users_can_be_filtered_by_where_they_heard_of_the_app(): void
