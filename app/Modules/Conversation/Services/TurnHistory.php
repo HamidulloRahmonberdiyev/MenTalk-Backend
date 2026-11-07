@@ -8,6 +8,7 @@ use App\Modules\Conversation\DTO\TurnInput;
 use App\Modules\Conversation\DTO\TurnResult;
 use App\Modules\Conversation\Enums\TurnKind;
 use App\Modules\Conversation\Enums\TurnRole;
+use App\Modules\Conversation\Events\LearnerMadeMistakes;
 use App\Modules\Conversation\Models\Conversation;
 use App\Modules\Conversation\Models\Turn;
 use Illuminate\Support\Facades\DB;
@@ -33,10 +34,11 @@ final class TurnHistory
 
     public function append(Conversation $conversation, TurnInput $input, TurnResult $result, ?string $audioUrl): Turn
     {
-        return DB::transaction(function () use ($conversation, $input, $result, $audioUrl) {
-            $learnerSaid = $input->kind === TurnKind::Text ? $input->text : $result->transcript;
+        $learnerSaid = $input->kind === TurnKind::Text ? $input->text : $result->transcript;
+        $learnerSpoke = $input->kind !== TurnKind::Opening && $learnerSaid !== '';
 
-            if ($input->kind !== TurnKind::Opening && $learnerSaid !== '') {
+        $turn = DB::transaction(function () use ($conversation, $result, $audioUrl, $learnerSaid, $learnerSpoke) {
+            if ($learnerSpoke) {
                 $conversation->turns()->create([
                     'role' => TurnRole::Learner,
                     'text' => $learnerSaid,
@@ -52,5 +54,17 @@ final class TurnHistory
                 'audio_url' => $audioUrl,
             ]);
         });
+
+        if ($learnerSpoke && $result->mistakes !== []) {
+            event(new LearnerMadeMistakes(
+                $conversation->user_id,
+                $conversation->target_language,
+                $conversation->id,
+                $conversation->user?->profile?->interfaceLanguage()->value ?? 'uz',
+                $result->mistakes,
+            ));
+        }
+
+        return $turn;
     }
 }

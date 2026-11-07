@@ -22,6 +22,7 @@ final class ModuleBoundariesTest extends TestCase
         'Pronunciation' => ['Account', 'Ai', 'Language'],
         'Vocabulary' => ['Account', 'Ai', 'Language', 'Progress'],
         'Conversation' => ['Account', 'Ai', 'Language', 'Progress', 'Speech'],
+        'Mistakes' => ['Account', 'Conversation', 'Language', 'Progress', 'Vocabulary'],
         'Certificate' => ['Account', 'Conversation', 'Language', 'Vocabulary'],
         'Notification' => ['Account', 'Language', 'Progress', 'Vocabulary'],
         'Bootstrap' => ['Account', 'Conversation', 'Language'],
