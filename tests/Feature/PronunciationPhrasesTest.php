@@ -134,6 +134,11 @@ final class PronunciationPhrasesTest extends TestCase
             {
                 throw new AiUnavailable;
             }
+
+            public function streamJson(AiRequest $request, callable $onText): array
+            {
+                throw new AiUnavailable;
+            }
         });
         $user = $this->user();
         $this->next($user, ['limit' => 8]);

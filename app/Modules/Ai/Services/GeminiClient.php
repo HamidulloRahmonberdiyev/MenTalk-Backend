@@ -22,6 +22,29 @@ final readonly class GeminiClient implements AiClient
         return trim($this->textOf($request));
     }
 
+    public function streamJson(AiRequest $request, callable $onText): array
+    {
+        $text = '';
+
+        foreach ([$request->model ?? $this->models['primary'], $this->models['fallback']] as $model) {
+            try {
+                $this->transport->stream($model, $request->payload(), static function (string $piece) use (&$text, $onText): void {
+                    $text .= $piece;
+                    $onText($piece);
+                });
+
+                return json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+            } catch (AiUnavailable $e) {
+                // Part of the answer is already on the learner's screen: a second model would contradict it.
+                if ($text !== '') {
+                    throw $e;
+                }
+            }
+        }
+
+        throw new AiUnavailable;
+    }
+
     private function textOf(AiRequest $request): string
     {
         $response = $this->generate($request);

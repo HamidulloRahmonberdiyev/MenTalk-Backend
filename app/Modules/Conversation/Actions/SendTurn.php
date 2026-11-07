@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Conversation\Actions;
 
 use App\Modules\Ai\Contracts\AiClient;
-use App\Modules\Ai\DTO\AiRequest;
 use App\Modules\Conversation\DTO\TurnInput;
 use App\Modules\Conversation\DTO\TurnResult;
 use App\Modules\Conversation\Enums\TurnKind;
 use App\Modules\Conversation\Models\Conversation;
 use App\Modules\Conversation\Models\Turn;
-use App\Modules\Conversation\Schemas\TurnSchema;
-use App\Modules\Conversation\Services\PromptBuilder;
 use App\Modules\Conversation\Services\TurnHistory;
+use App\Modules\Conversation\Services\TurnRequests;
 use App\Modules\Language\Contracts\LanguageCatalog;
 use App\Modules\Language\DTO\TutorLanguage;
 use App\Modules\Speech\Contracts\SpeechSynthesizer;
@@ -25,7 +23,7 @@ final readonly class SendTurn
 {
     public function __construct(
         private AiClient $ai,
-        private PromptBuilder $prompts,
+        private TurnRequests $requests,
         private SpeechSynthesizer $speech,
         private TurnHistory $history,
         private LanguageCatalog $languages,
@@ -37,15 +35,7 @@ final readonly class SendTurn
         $language = $this->languages->get($conversation->target_language);
 
         return Cache::lock("conversation:{$conversation->id}", 40)->block(3, function () use ($conversation, $input, $language) {
-            $request = new AiRequest(
-                system: $this->prompts->system($conversation, $language),
-                contents: [
-                    ...$this->history->contents($conversation),
-                    ['role' => 'user', 'parts' => $this->prompts->userParts($input, $language)],
-                ],
-                schema: TurnSchema::get(),
-            );
-            $result = TurnResult::from($this->ai->json($request));
+            $result = TurnResult::from($this->ai->json($this->requests->make($conversation, $input, $language)));
             $clip = $this->speak($result->reply, $language);
 
             return $this->history->append($conversation, $input, $result, $clip?->url)

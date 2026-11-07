@@ -21,6 +21,18 @@ final class FakeAiClient implements AiClient
         return $this->json;
     }
 
+    /** Hands the JSON over a few characters at a time, the way a real stream splits it. */
+    public function streamJson(AiRequest $request, callable $onText): array
+    {
+        $this->requests[] = $request;
+
+        foreach (mb_str_split(json_encode($this->json, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 7) as $piece) {
+            $onText($piece);
+        }
+
+        return $this->json;
+    }
+
     public function text(AiRequest $request): string
     {
         $this->requests[] = $request;

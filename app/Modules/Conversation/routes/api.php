@@ -8,6 +8,7 @@ use App\Modules\Conversation\Http\Controllers\HistoryController;
 use App\Modules\Conversation\Http\Controllers\PathController;
 use App\Modules\Conversation\Http\Controllers\StartConversationController;
 use App\Modules\Conversation\Http\Controllers\StoreTurnController;
+use App\Modules\Conversation\Http\Controllers\StreamTurnController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -17,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('throttle:ai')->group(function () {
         Route::post('conversations', StartConversationController::class)->middleware('quota:turns');
         Route::post('conversations/{conversation}/turns', StoreTurnController::class)->middleware('quota:turns');
+        Route::post('conversations/{conversation}/turns/stream', StreamTurnController::class)->middleware('quota:turns');
         Route::post('conversations/{conversation}/hint', HintController::class);
         Route::post('conversations/{conversation}/finish', FinishConversationController::class);
     });

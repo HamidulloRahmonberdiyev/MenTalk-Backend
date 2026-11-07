@@ -17,6 +17,8 @@ final class TurnSchema
                 'mistakes' => ['type' => 'ARRAY', 'items' => MistakeSchema::get()],
             ],
             'required' => ['transcript', 'reply', 'emotion', 'mistakes'],
+            // Streamed in this order: the reply can be shown and voiced while the mistakes are still being written.
+            'propertyOrdering' => ['transcript', 'emotion', 'reply', 'mistakes'],
         ];
     }
 }

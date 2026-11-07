@@ -16,6 +16,8 @@ final class StoreTurnRequest extends FormRequest
             'text' => ['required_without:audio', 'string', 'max:500'],
             'audio' => ['required_without:text', 'string', 'max:4000000'],
             'mime' => ['required_with:audio', 'in:audio/mp4,audio/m4a,audio/aac,audio/mpeg'],
+            // Streamed turns only: the app can play the voice as several pieces.
+            'clips' => ['sometimes', 'boolean'],
         ];
     }
 

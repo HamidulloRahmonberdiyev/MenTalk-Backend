@@ -23,6 +23,11 @@ final readonly class MeteredAiClient implements AiClient
         return $this->measure('text', fn () => $this->inner->text($request));
     }
 
+    public function streamJson(AiRequest $request, callable $onText): array
+    {
+        return $this->measure('json', fn () => $this->inner->streamJson($request, $onText));
+    }
+
     private function measure(string $kind, callable $call): mixed
     {
         $start = hrtime(true);
