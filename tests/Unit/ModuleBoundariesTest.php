@@ -26,6 +26,7 @@ final class ModuleBoundariesTest extends TestCase
         'Certificate' => ['Account', 'Conversation', 'Language', 'Vocabulary'],
         'Notification' => ['Account', 'Language', 'Progress', 'Vocabulary'],
         'Bootstrap' => ['Account', 'Conversation', 'Language'],
+        'Support' => ['Account'],
         'Admin' => ['Account', 'Ai', 'Conversation', 'Language', 'Notification', 'Vocabulary'],
     ];
 
