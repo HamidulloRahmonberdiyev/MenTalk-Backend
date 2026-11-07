@@ -9,6 +9,7 @@ use App\Modules\Account\Enums\Focus;
 use App\Modules\Account\Enums\Gender;
 use App\Modules\Account\Enums\Level;
 use App\Modules\Account\Enums\LevelSource;
+use App\Modules\Account\Enums\NativeLanguage;
 use App\Modules\Account\Enums\ReferralSource;
 use App\Modules\Language\Enums\InterfaceLanguage;
 use App\Modules\Language\Rules\TaughtLanguage;
@@ -33,6 +34,7 @@ final class UpdateProfileRequest extends FormRequest
                 'nullable', 'integer', 'between:0,100',
             ],
             'experience' => ['sometimes', 'nullable', Rule::enum(Experience::class)],
+            'native_language' => ['sometimes', 'nullable', Rule::enum(NativeLanguage::class)],
             'referral_source' => ['sometimes', 'nullable', Rule::enum(ReferralSource::class)],
             'focus' => ['sometimes', 'array', 'max:6'],
             'focus.*' => ['distinct', Rule::enum(Focus::class)],

@@ -29,6 +29,7 @@ final class UserResource extends JsonResource
             'referral_source' => $profile?->referral_source?->value,
             'goals' => $profile?->goals ?? [],
             'focus' => $profile?->focus ?? [],
+            'native_language' => $profile?->native_language?->value,
             'ui_language' => $profile?->ui_language?->value,
             'target_language' => $profile?->target_language,
             'timezone' => $profile?->timezone,

@@ -8,6 +8,7 @@ use App\Modules\Account\Enums\Experience;
 use App\Modules\Account\Enums\Gender;
 use App\Modules\Account\Enums\Level;
 use App\Modules\Account\Enums\LevelSource;
+use App\Modules\Account\Enums\NativeLanguage;
 use App\Modules\Account\Enums\ReferralSource;
 use App\Modules\Language\Enums\InterfaceLanguage;
 use Database\Factories\LearnerProfileFactory;
@@ -40,6 +41,7 @@ final class LearnerProfile extends Model
             'level_source' => LevelSource::class,
             'experience' => Experience::class,
             'referral_source' => ReferralSource::class,
+            'native_language' => NativeLanguage::class,
             'focus' => 'array',
             'placement_score' => 'integer',
             'placed_at' => 'datetime',
@@ -66,6 +68,8 @@ final class LearnerProfile extends Model
     public function describe(): string
     {
         return collect([
+            // Lets the tutor expect the mistakes that come from the learner's own language.
+            $this->native_language && $this->native_language !== NativeLanguage::Other ? 'native language: '.$this->native_language->englishName() : null,
             $this->level ? "level: {$this->level->value}".$this->levelEvidence() : null,
             $this->experience ? 'background: '.$this->experience->describe() : null,
             $this->goals ? 'goals: '.implode(', ', $this->goals) : null,

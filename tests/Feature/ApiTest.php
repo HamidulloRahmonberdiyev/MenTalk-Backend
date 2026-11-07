@@ -228,6 +228,23 @@ final class ApiTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors(['referral_source']);
     }
 
+    public function test_onboarding_stores_the_native_language_and_the_tutor_is_told_about_it(): void
+    {
+        $user = $this->user();
+
+        $this->actingAs($user)->putJson('/api/v1/me', ['native_language' => 'kk', 'ui_language' => 'ru'])
+            ->assertOk()->assertJsonPath('data.native_language', 'kk')->assertJsonPath('data.ui_language', 'ru');
+
+        $this->assertStringContainsString('native language: Kazakh', $user->profile->refresh()->describe());
+
+        // "Another language" says nothing the tutor could use.
+        $this->actingAs($user)->putJson('/api/v1/me', ['native_language' => 'other'])->assertOk();
+        $this->assertStringNotContainsString('native language', $user->profile->refresh()->describe());
+
+        $this->actingAs($user)->putJson('/api/v1/me', ['native_language' => 'klingon'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['native_language']);
+    }
+
     public function test_onboarding_stores_the_placement_result_and_learning_background(): void
     {
         $user = $this->user();
