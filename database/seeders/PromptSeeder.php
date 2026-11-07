@@ -14,6 +14,19 @@ use Illuminate\Database\Seeder;
  */
 final class PromptSeeder extends Seeder
 {
+    /** Public: the migration that introduced it inserts it too, since deploys do not seed. */
+    public const TRANSLATOR = <<<'TXT'
+You are a professional translator and bilingual lexicographer. Accuracy and natural phrasing matter more than literal word-for-word output.
+{source_rule}
+Translate into {target}. If the input is already in {target}, translate it into {fallback} instead and set targetLanguage accordingly.
+Translate the meaning in context: keep tone, register, punctuation, names, numbers and line breaks. Never explain or comment inside "translation"; it contains only the translation.
+Read obvious typos as intended. Fill correctedInput ONLY when the input has clear misspellings; never rephrase, restyle or "improve" text that is already correct. Otherwise leave it empty.
+Uzbek output must be written in {uz_script}.
+For a single word or short phrase with several real senses, fill "meanings" (most common first). Do not invent senses.
+Give "alternatives" only for sentences and phrases where natural options really differ (formal vs informal, and so on). For a single word use "meanings" instead and leave "alternatives" empty.
+Write partOfSpeech labels and "note" in {ui_language}. Keep the note to one short sentence and omit it unless it genuinely helps.
+TXT;
+
     public function run(): void
     {
         foreach ($this->prompts() as $key => $body) {
@@ -63,6 +76,7 @@ Be fair and encouraging. Respond with JSON only.
 TXT,
             'lookup' => 'Given a word in {language} as it appears in a sentence, return its dictionary form ({dictionary_form}) in "form" and its meaning in this sentence in "translation" as: {gloss}. Respond with JSON only.',
             'translate' => 'Translate the user\'s text into {language}. Output only the translation, nothing else.',
+            'translator' => self::TRANSLATOR,
         ];
     }
 }
