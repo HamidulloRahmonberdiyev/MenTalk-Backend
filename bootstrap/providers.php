@@ -8,6 +8,7 @@ use App\Modules\Conversation\ConversationServiceProvider;
 use App\Modules\Language\LanguageServiceProvider;
 use App\Modules\Notification\NotificationServiceProvider;
 use App\Modules\Progress\ProgressServiceProvider;
+use App\Modules\Pronunciation\PronunciationServiceProvider;
 use App\Modules\Speech\SpeechServiceProvider;
 use App\Modules\Translator\TranslatorServiceProvider;
 use App\Modules\Vocabulary\VocabularyServiceProvider;
@@ -24,6 +25,7 @@ return [
     LanguageServiceProvider::class,
     NotificationServiceProvider::class,
     ProgressServiceProvider::class,
+    PronunciationServiceProvider::class,
     SpeechServiceProvider::class,
     TranslatorServiceProvider::class,
     VocabularyServiceProvider::class,

@@ -127,14 +127,15 @@ body { position: relative; font-family: 'Inter', sans-serif; color: #0B1F3A; }
 <div class="abs name serif" style="font-size: {{ $nameSize }}px">{{ $certificate->holder_name }}</div>
 <div class="abs statement">
   has demonstrated <b>{{ $certificate->level->label() }} ({{ $certificate->level->cefr() }})</b> proficiency in <b>{{ $language }}</b>,
-  assessed through a placement test and {{ $certificate->conversations }} tutor-rated conversations.
+  assessed through {{ $certificate->basis() }}.
 </div>
 
 @foreach ([['Speaking', $certificate->speaking, 284], ['Vocabulary', $certificate->vocabulary, 415], ['Grammar', $certificate->grammar, 546]] as [$label, $value, $x])
   <div class="abs score" style="left: {{ $x }}px">
     <div class="label caps">{{ $label }}</div>
-    <div class="value serif">{{ number_format($value, 1) }}</div>
-    <div class="max">out of 10</div>
+    {{-- A skill no activity measured yet (no conversation) says so, never shows a zero. --}}
+    <div class="value serif">{{ $value === null ? '—' : number_format($value, 1) }}</div>
+    <div class="max">{{ $value === null ? 'not assessed' : 'out of 10' }}</div>
   </div>
 @endforeach
 <div class="abs score total" style="left: 677px">
@@ -145,7 +146,11 @@ body { position: relative; font-family: 'Inter', sans-serif; color: #0B1F3A; }
 
 <div class="abs meta" style="left: 284px"><div class="label caps">Certificate No.</div><div class="value">{{ $certificate->serial }}</div></div>
 <div class="abs meta" style="left: 480px"><div class="label caps">Date of issue</div><div class="value">{{ $certificate->issued_at->format('j F Y') }}</div></div>
-<div class="abs meta" style="left: 660px"><div class="label caps">Placement test</div><div class="value">{{ $certificate->placement_score }}%</div></div>
+@if ($certificate->placement_score !== null)
+  <div class="abs meta" style="left: 660px"><div class="label caps">Placement test</div><div class="value">{{ $certificate->placement_score }}%</div></div>
+@else
+  <div class="abs meta" style="left: 660px"><div class="label caps">Saved words</div><div class="value">{{ $certificate->words }}</div></div>
+@endif
 
 <img class="abs mark" src="{{ $logo }}" alt="">
 
@@ -155,7 +160,7 @@ body { position: relative; font-family: 'Inter', sans-serif; color: #0B1F3A; }
 </div>
 
 <div class="abs notice">
-  Scores are the average of the holder's most recent rated conversations in the MenTalk app. This certificate reflects in-app assessment
+  Scores reflect the holder's activity in the MenTalk app up to the date of issue: recent rated conversations and saved vocabulary. This certificate reflects in-app assessment
   and is not the result of an official or proctored language examination.
 </div>
 </body>

@@ -28,9 +28,10 @@ p.notice { margin-top: 18px; color: #6B7A90; font-size: 12px; line-height: 1.5; 
     <div><dt>Certificate No.</dt><dd>{{ $certificate->serial }}</dd></div>
     <div><dt>Date of issue</dt><dd>{{ $certificate->issued_at->format('j F Y') }}</dd></div>
     <div><dt>Overall score</dt><dd>{{ number_format($certificate->overall, 1) }} / 10</dd></div>
-    <div><dt>Speaking</dt><dd>{{ number_format($certificate->speaking, 1) }}</dd></div>
-    <div><dt>Vocabulary</dt><dd>{{ number_format($certificate->vocabulary, 1) }}</dd></div>
-    <div><dt>Grammar</dt><dd>{{ number_format($certificate->grammar, 1) }}</dd></div>
+    @foreach (['Speaking' => $certificate->speaking, 'Vocabulary' => $certificate->vocabulary, 'Grammar' => $certificate->grammar] as $label => $value)
+      <div><dt>{{ $label }}</dt><dd>{{ $value === null ? 'Not assessed' : number_format($value, 1) }}</dd></div>
+    @endforeach
+    <div><dt>Based on</dt><dd>{{ ucfirst($certificate->basis()) }}</dd></div>
   </dl>
   <p class="notice">Issued by MenTalk from in-app assessment. This is not the result of an official or proctored language examination.</p>
 </main>

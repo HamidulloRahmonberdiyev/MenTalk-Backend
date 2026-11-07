@@ -8,7 +8,13 @@ use App\Modules\Account\Models\User;
 use App\Modules\Certificate\Exceptions\CertificateNotEarned;
 use App\Modules\Certificate\Models\Certificate;
 use App\Modules\Certificate\Services\CertificateAssessment;
+use Illuminate\Support\Facades\Cache;
 
+/**
+ * Issues a certificate for where the learner stands right now, whenever they ask. An issued
+ * certificate never changes (it is a dated record, verifiable by its QR code), so new progress means
+ * a new certificate; asking again with nothing changed returns the current one instead of a copy.
+ */
 final readonly class IssueCertificate
 {
     /** No 0/O or 1/I: the number gets typed in by hand on the verification page. */
@@ -16,26 +22,51 @@ final readonly class IssueCertificate
 
     public function __construct(private CertificateAssessment $assess) {}
 
-    /** Returns the certificate for the learner's current level, issuing it the first time. */
     public function __invoke(User $user): Certificate
     {
-        $standing = ($this->assess)($user);
+        // A double tap must not issue two certificates for the same results.
+        return Cache::lock("certificate:{$user->id}", 10)->block(5, function () use ($user) {
+            $standing = ($this->assess)($user);
 
-        if (! $standing->isEligible()) {
-            throw new CertificateNotEarned;
-        }
+            if (! $standing->isEligible()) {
+                throw new CertificateNotEarned;
+            }
 
-        return Certificate::query()->createOrFirst(
-            ['user_id' => $user->id, 'language' => $standing->language, 'level' => $standing->level],
-            [
+            $latest = Certificate::query()
+                ->where(['user_id' => $user->id, 'language' => $standing->language])
+                ->latest('issued_at')->latest('id')
+                ->first();
+
+            if ($latest !== null && self::snapshotOf($latest) === $standing->snapshot()) {
+                return $latest;
+            }
+
+            return Certificate::query()->create([
+                'user_id' => $user->id,
+                'language' => $standing->language,
                 'serial' => self::serial(),
                 'holder_name' => $user->name,
-                'placement_score' => $standing->placementScore,
-                ...$standing->scores,
-                'conversations' => $standing->conversations,
+                ...$standing->snapshot(),
                 'issued_at' => now(),
-            ],
-        );
+            ]);
+        });
+    }
+
+    /** The same keys and types as `CertificateStanding::snapshot()`. */
+    private static function snapshotOf(Certificate $certificate): array
+    {
+        $score = fn (?float $value) => $value === null ? null : round($value, 1);
+
+        return [
+            'level' => $certificate->level->value,
+            'placement_score' => $certificate->placement_score,
+            'speaking' => $score($certificate->speaking),
+            'vocabulary' => $score($certificate->vocabulary),
+            'grammar' => $score($certificate->grammar),
+            'overall' => $score($certificate->overall),
+            'conversations' => $certificate->conversations,
+            'words' => $certificate->words,
+        ];
     }
 
     private static function serial(): string

@@ -30,7 +30,9 @@ final class ShowCertificateController extends Controller
             'cefr' => $standing->level?->cefr(),
             'placed' => $standing->isPlaced(),
             'conversations' => $standing->conversations,
+            // Now what the top level (B2+) needs; any activity earns a certificate.
             'required_conversations' => $standing->requiredConversations,
+            'words' => $standing->words,
             'scores' => $standing->scores,
             'eligible' => $standing->isEligible(),
             'certificate' => $certificate ? CertificateResource::make($certificate)->resolve($request) : null,

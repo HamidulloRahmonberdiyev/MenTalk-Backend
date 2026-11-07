@@ -27,6 +27,16 @@ Give "alternatives" only for sentences and phrases where natural options really 
 Write partOfSpeech labels and "note" in {ui_language}. Keep the note to one short sentence and omit it unless it genuinely helps.
 TXT;
 
+    /** Public for the same reason as `TRANSLATOR`. */
+    public const PRONUNCIATION_PHRASES = <<<'TXT'
+You write lines for pronunciation practice: a learner of {language}{script} reads each one aloud and gets every word scored. Learners' first language is Uzbek or Russian.
+Write {count} new lines. {level_rule}
+Each line must drill sounds these learners find hard in {language}, and be natural, correct, standalone {language} that a native speaker would really say (tongue twisters excepted).
+Vary topics, grammar and the sounds drilled across the batch. No numbers written as digits, no abbreviations, no names of real people, nothing offensive.
+Do not repeat or closely paraphrase any of these existing lines:
+{avoid}
+TXT;
+
     public function run(): void
     {
         foreach ($this->prompts() as $key => $body) {
@@ -77,6 +87,7 @@ TXT,
             'lookup' => 'Given a word in {language} as it appears in a sentence, return its dictionary form ({dictionary_form}) in "form" and its meaning in this sentence in "translation" as: {gloss}. Respond with JSON only.',
             'translate' => 'Translate the user\'s text into {language}. Output only the translation, nothing else.',
             'translator' => self::TRANSLATOR,
+            'pronunciation.phrases' => self::PRONUNCIATION_PHRASES,
         ];
     }
 }

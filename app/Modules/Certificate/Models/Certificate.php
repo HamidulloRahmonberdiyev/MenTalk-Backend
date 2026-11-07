@@ -28,6 +28,7 @@ final class Certificate extends Model
             'grammar' => 'float',
             'overall' => 'float',
             'conversations' => 'integer',
+            'words' => 'integer',
             'issued_at' => 'datetime',
         ];
     }
@@ -35,6 +36,18 @@ final class Certificate extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** What the level rests on, for the documents: "a placement test, 3 tutor-rated conversations and 40 saved words". */
+    public function basis(): string
+    {
+        $parts = array_values(array_filter([
+            $this->placement_score !== null ? 'a placement test' : null,
+            $this->conversations > 0 ? $this->conversations.' tutor-rated '.str('conversation')->plural($this->conversations) : null,
+            $this->words > 0 ? $this->words.' saved '.str('word')->plural($this->words) : null,
+        ]));
+
+        return count($parts) > 1 ? implode(', ', array_slice($parts, 0, -1)).' and '.end($parts) : ($parts[0] ?? 'in-app activity');
     }
 
     public function verifyUrl(): string

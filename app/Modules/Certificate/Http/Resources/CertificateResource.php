@@ -21,6 +21,10 @@ final class CertificateResource extends JsonResource
             'vocabulary' => $this->vocabulary,
             'grammar' => $this->grammar,
             'overall' => $this->overall,
+            // What the level rests on.
+            'placement_score' => $this->placement_score,
+            'conversations' => $this->conversations,
+            'words' => $this->words,
             'issued_at' => $this->issued_at->toIso8601String(),
             'verify_url' => $this->verifyUrl(),
         ];
