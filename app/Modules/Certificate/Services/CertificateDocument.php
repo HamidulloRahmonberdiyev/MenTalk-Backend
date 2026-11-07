@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Certificate\Services;
 
+use App\Modules\Account\Enums\Level;
 use App\Modules\Certificate\Models\Certificate;
 use App\Modules\Language\Models\Language;
 use chillerlan\QRCode\Common\EccLevel;
@@ -32,6 +33,19 @@ final class CertificateDocument
         ['Inter', 'inter', 600, 'normal'],
     ];
 
+    /** A4 portrait in CSS pixels at 72 dpi: the page the app prints and shows. */
+    public const WIDTH = 595;
+
+    public const HEIGHT = 842;
+
+    /** What each level means, in the manner of the CEFR "can do" descriptors (our own wording). */
+    private const DESCRIPTORS = [
+        'beginner' => 'Can understand and use familiar everyday expressions and very basic phrases, introduce themselves and others, and answer simple questions about personal details when the other person speaks slowly and clearly.',
+        'elementary' => 'Can understand sentences and frequently used expressions on familiar topics, take part in short routine exchanges, and describe their background, surroundings and immediate needs in simple terms.',
+        'intermediate' => 'Can deal with most situations likely to arise in everyday life, talk about experiences, plans and opinions, and produce simple connected speech on topics that are familiar or of personal interest.',
+        'advanced' => 'Can interact with a degree of fluency and spontaneity that makes regular conversation with native speakers comfortable, and give clear, detailed views on a wide range of subjects.',
+    ];
+
     public function html(Certificate $certificate): string
     {
         $url = $certificate->verifyUrl();
@@ -39,25 +53,34 @@ final class CertificateDocument
         return view('certificates.document', [
             'certificate' => $certificate,
             'language' => Language::query()->find($certificate->language)?->title['en'] ?? strtoupper($certificate->language),
+            'levels' => Level::cases(),
+            'descriptor' => self::DESCRIPTORS[$certificate->level->value],
+            'skills' => [
+                'Speaking' => $certificate->speaking,
+                'Vocabulary' => $certificate->vocabulary,
+                'Grammar' => $certificate->grammar,
+            ],
             'fonts' => self::fonts(),
             'logo' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(resource_path('images/certificate-logo.png'))),
             'qr' => self::qr($url),
             'verifyLabel' => preg_replace('#^https?://#', '', $url),
-            'rosette' => Guilloche::rosette(118, 232, 62, 92, 18, 12),
-            'waves' => Guilloche::waves(236, 595, 30),
+            'rosette' => Guilloche::rosette(121, 432, 44, 57, 18, 12),
+            'seal' => Guilloche::rosette(527, 742, 22, 36, 14, 10),
+            // Drawn upright, then turned on their side to run along the header band.
+            'waves' => Guilloche::waves(84, self::WIDTH, 16),
             'nameSize' => self::nameSize($certificate->holder_name),
         ])->render();
     }
 
-    /** Shrinks a long name so it stays inside its two-line slot. */
+    /** Shrinks a long name so it stays on its line in the holder box. */
     private static function nameSize(string $name): int
     {
         return match (true) {
-            mb_strlen($name) <= 20 => 46,
-            mb_strlen($name) <= 28 => 36,
-            mb_strlen($name) <= 40 => 27,
-            mb_strlen($name) <= 80 => 22,
-            default => 16,
+            mb_strlen($name) <= 24 => 24,
+            mb_strlen($name) <= 34 => 20,
+            mb_strlen($name) <= 48 => 16,
+            mb_strlen($name) <= 80 => 12,
+            default => 10,
         };
     }
 
