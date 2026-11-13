@@ -97,9 +97,29 @@ final class ApiTest extends TestCase
         $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/finish")->assertOk()->assertJsonPath('data.overall', 7);
         $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/finish")->assertOk()->assertJsonPath('data.overall', 7);
 
-        $this->actingAs($user)->getJson('/api/v1/stats')->assertOk()->assertJsonPath('data.streak', 1);
+        // One reply is too short a talk to earn XP.
+        $this->actingAs($user)->getJson('/api/v1/stats')->assertOk()->assertJsonPath('data.streak', 1)->assertJsonPath('data.xp', 0);
         $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/turns", ['text' => 'Ещё'])->assertForbidden();
         $this->assertCount(2, $ai->requests);
+    }
+
+    public function test_a_real_conversation_earns_xp_by_its_score_once(): void
+    {
+        $this->fakeAi(['transcript' => '', 'reply' => 'Привет!', 'emotion' => 'happy', 'mistakes' => []]);
+        $user = $this->user();
+
+        $id = $this->actingAs($user)->postJson('/api/v1/conversations', ['scenario_id' => 'cafe'])->assertCreated()->json('data.conversation_id');
+
+        foreach (['Привет', 'Кофе, пожалуйста', 'Спасибо'] as $text) {
+            $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/turns", ['text' => $text])->assertOk();
+        }
+
+        $this->app->instance(AiClient::class, new FakeAiClient(['speech' => 8, 'vocabulary' => 7, 'grammar' => 6, 'mistakes' => [], 'newWords' => []]));
+        $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/finish")->assertOk();
+        $this->actingAs($user)->postJson("/api/v1/conversations/{$id}/finish")->assertOk();
+
+        // 10 for taking part + 2 per point of the overall 7.
+        $this->actingAs($user)->getJson('/api/v1/stats')->assertOk()->assertJsonPath('data.xp', 24)->assertJsonPath('data.today_xp', 24);
     }
 
     public function test_reply_still_arrives_when_speech_fails(): void

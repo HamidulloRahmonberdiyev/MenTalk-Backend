@@ -16,6 +16,7 @@ use App\Modules\Conversation\Services\Transcript;
 use App\Modules\Language\Contracts\LanguageCatalog;
 use App\Modules\Language\Enums\InterfaceLanguage;
 use App\Modules\Progress\Services\ProgressTracker;
+use App\Modules\Progress\Support\Xp;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -51,7 +52,11 @@ final readonly class FinishConversation
                 'duration_sec' => $seconds,
                 'score' => $scores['overall'],
             ]);
-            $this->progress->record($user, minutes: intdiv($seconds + 59, 60), xp: 0);
+            $this->progress->record(
+                $user,
+                minutes: intdiv($seconds + 59, 60),
+                xp: Xp::forConversation($conversation->learner_turns, $scores['overall']),
+            );
 
             return $result;
         });

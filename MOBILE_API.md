@@ -352,6 +352,34 @@ Keyingi sahifa: `GET /history?cursor=<next_cursor>` (`useInfiniteQuery` bilan qu
 }
 ```
 
+**XP qayerdan keladi:** lug'at va xatolar mashqi (to'g'ri javob + kombo + bonus) hamda tugatilgan suhbat. Suhbat uchun XP o'quvchi kamida 3 ta gap aytgan bo'lsa beriladi: `10 + overall × 2`, ya'ni 10–30 XP. `finish` ikki marta chaqirilsa ham XP faqat bir marta yoziladi.
+
+### `GET /leaderboard?period=week&limit=20` — peshqadamlar jadvali
+
+| Parametr | Qiymat | Default |
+|---|---|---|
+| `period` | `week` (dushanbadan beri yig'ilgan XP, o'quvchining vaqt zonasida) · `all` (umumiy XP) | `week` |
+| `limit` | 1–50 | 20 |
+
+```json
+{
+  "data": {
+    "period": "week",
+    "since": "2026-11-09",          // all uchun null
+    "top": [
+      { "rank": 1, "name": "Aziza K.", "avatar_url": "https://…", "xp": 3918, "is_me": false },
+      { "rank": 2, "name": "Hamidullo R.", "avatar_url": null, "xp": 3634, "is_me": true }
+    ],
+    "me": { "rank": 2, "xp": 3634 } // XP 0 bo'lsa rank: null
+  }
+}
+```
+
+- Teng XP'da avval ro'yxatdan o'tgan o'quvchi yuqorida turadi, shuning uchun o'rin barqaror.
+- Boshqa o'quvchilarning familiyasi ko'rsatilmaydi: faqat ism va familiyaning bosh harfi.
+- Bloklangan, o'chirilgan va hali XP'si yo'q o'quvchilar ro'yxatga kirmaydi.
+- `me` har doim qaytadi, o'quvchi `top` ichida bo'lmasa ham.
+
 ---
 
 ## 7. Tarjima va lug'at
