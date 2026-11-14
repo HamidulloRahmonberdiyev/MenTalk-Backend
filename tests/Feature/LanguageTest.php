@@ -58,7 +58,7 @@ final class LanguageTest extends TestCase
 
         $this->assertStringContainsString('You are Emma', $this->system());
         $this->assertStringContainsString('A café in London', $this->system());
-        $this->assertStringContainsString('Always reply in English only', $this->system());
+        $this->assertStringContainsString('everything you say is in English', $this->system());
         $this->assertStringNotContainsString('{', $this->system());
         $this->assertSame('en', Conversation::query()->sole()->target_language);
     }
