@@ -67,8 +67,8 @@ final class LeaderboardTest extends TestCase
         $this->assertSame('week', $data['period']);
         $this->assertSame('2026-11-09', $data['since']);
         $this->assertSame([['rank' => 1, 'name' => 'Newcomer', 'avatar_url' => null, 'xp' => 40, 'is_me' => false]], $data['top']);
-        // Nothing this week yet: no place on the board.
-        $this->assertSame(['rank' => null, 'xp' => 0], $data['me']);
+        // Nothing this week yet: placed right after everyone who has some, though not in the top list.
+        $this->assertSame(['rank' => 2, 'xp' => 0], $data['me']);
 
         $this->actingAs($fresh)->getJson('/api/v1/leaderboard?period=week')->assertOk()
             ->assertJsonPath('data.me', ['rank' => 1, 'xp' => 40]);
@@ -83,6 +83,18 @@ final class LeaderboardTest extends TestCase
         $this->actingAs($me)->getJson('/api/v1/leaderboard?period=all&limit=2')->assertOk()
             ->assertJsonCount(2, 'data.top')
             ->assertJsonPath('data.me', ['rank' => 3, 'xp' => 10]);
+    }
+
+    public function test_learners_without_xp_share_the_place_after_everyone_who_has_some(): void
+    {
+        $this->learner('Leader', 50);
+        $this->learner('Early Zero', 0);
+        $me = $this->learner('Late Zero', 0);
+
+        $this->actingAs($me)->getJson('/api/v1/leaderboard?period=all')->assertOk()
+            ->assertJsonCount(1, 'data.top')
+            ->assertJsonPath('data.top.0.name', 'Leader')
+            ->assertJsonPath('data.me', ['rank' => 2, 'xp' => 0]);
     }
 
     public function test_blocked_and_deleted_learners_are_left_off(): void

@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Learners ranked by XP. Ties go to whoever signed up first (ULIDs sort by creation time), so every
- * learner has one stable place. Blocked and deleted accounts are left off, and so is anyone with no XP yet.
+ * learner has one stable place. Blocked and deleted accounts are left off, and so is anyone with no XP
+ * yet; the learner asking still gets a place then, right after everyone who has some, so the app can
+ * always show their own row.
  */
 final class Leaderboard
 {
@@ -23,7 +25,7 @@ final class Leaderboard
      *     period: string,
      *     since: string|null,
      *     top: list<array{rank: int, name: string, avatar_url: string|null, xp: int, is_me: bool}>,
-     *     me: array{rank: int|null, xp: int},
+     *     me: array{rank: int, xp: int},
      * }
      */
     public function for(User $user, LeaderboardPeriod $period, int $limit): array
@@ -36,7 +38,10 @@ final class Leaderboard
             'period' => $period->value,
             'since' => $since,
             'top' => $this->top($user, $period, $since, $limit),
-            'me' => ['rank' => $myXp > 0 ? $this->rank($user, $period, $since, $myXp) : null, 'xp' => $myXp],
+            'me' => [
+                'rank' => $myXp > 0 ? $this->rank($user, $period, $since, $myXp) : $this->placeWithoutXp($period, $since),
+                'xp' => $myXp,
+            ],
         ];
     }
 
@@ -95,6 +100,12 @@ final class Leaderboard
             ->count();
 
         return $ahead + 1;
+    }
+
+    /** No XP yet: right after everyone who has some. Every learner still at zero shares this place. */
+    private function placeWithoutXp(LeaderboardPeriod $period, ?string $since): int
+    {
+        return DB::query()->fromSub($this->scores($period, $since), 'scores')->where('total', '>', 0)->count() + 1;
     }
 
     /** "Hamidullo Rahmonberdiyev" is shown as "Hamidullo R.": other learners never see a full surname. */
