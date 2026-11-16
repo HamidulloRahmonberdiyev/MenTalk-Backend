@@ -12,8 +12,6 @@ use App\Modules\Language\Enums\InterfaceLanguage;
 
 final readonly class LoginWithGoogle
 {
-    private const TOKEN_DAYS = 90;
-
     public function __construct(private IdentityVerifier $verifier) {}
 
     /** @return array{0: User, 1: string} */
@@ -40,6 +38,6 @@ final readonly class LoginWithGoogle
             event(new UserRegistered($user));
         }
 
-        return [$user, $user->createToken($device, ['*'], now()->addDays(self::TOKEN_DAYS))->plainTextToken];
+        return [$user, $user->issueApiToken($device)];
     }
 }

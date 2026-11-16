@@ -2,16 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Modules\Account\Http\Controllers\CheckTelegramLoginController;
 use App\Modules\Account\Http\Controllers\DeleteAccountController;
 use App\Modules\Account\Http\Controllers\DeleteAvatarController;
 use App\Modules\Account\Http\Controllers\GoogleLoginController;
 use App\Modules\Account\Http\Controllers\LogoutController;
 use App\Modules\Account\Http\Controllers\ShowProfileController;
+use App\Modules\Account\Http\Controllers\StartTelegramLoginController;
+use App\Modules\Account\Http\Controllers\TelegramWebhookController;
 use App\Modules\Account\Http\Controllers\UpdateAvatarController;
 use App\Modules\Account\Http\Controllers\UpdateProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/google', GoogleLoginController::class)->middleware('throttle:auth');
+Route::post('auth/telegram', StartTelegramLoginController::class)->middleware('throttle:auth');
+Route::post('auth/telegram/{telegramLogin}', CheckTelegramLoginController::class)->middleware('throttle:telegram-check');
+
+Route::post('telegram/webhook', TelegramWebhookController::class)->name('telegram.webhook');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::delete('auth/session', LogoutController::class);

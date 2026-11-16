@@ -33,12 +33,23 @@ final class User extends Authenticatable implements FilamentUser
 
     public const AVATAR_DISK = 'avatars';
 
-    // is_admin, password, blocked_at and avatar_path are deliberately not mass assignable.
-    protected $fillable = ['google_id', 'email', 'name', 'google_avatar_url'];
+    /** How long a phone stays signed in without signing in again. */
+    private const TOKEN_DAYS = 90;
+
+    // is_admin, password, blocked_at and the avatar paths are deliberately not mass assignable.
+    protected $fillable = ['google_id', 'telegram_id', 'telegram_username', 'email', 'name', 'google_avatar_url'];
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $attributes = ['is_admin' => false, 'blocked_at' => null, 'avatar_path' => null, 'google_avatar_url' => null];
+    protected $attributes = [
+        'is_admin' => false,
+        'blocked_at' => null,
+        'avatar_path' => null,
+        'google_avatar_url' => null,
+        'telegram_id' => null,
+        'telegram_username' => null,
+        'telegram_avatar_path' => null,
+    ];
 
     protected function casts(): array
     {
@@ -46,6 +57,7 @@ final class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'blocked_at' => 'datetime',
+            'telegram_id' => 'integer',
         ];
     }
 
@@ -64,12 +76,27 @@ final class User extends Authenticatable implements FilamentUser
         return $this->morphMany(DatabaseNotification::class, 'notifiable')->latest();
     }
 
-    /** The uploaded photo, otherwise the Google one. */
+    /** The uploaded photo, otherwise the one from Telegram or Google. */
     protected function avatarUrl(): Attribute
     {
-        return Attribute::get(fn (): ?string => $this->avatar_path !== null
-            ? Storage::disk(self::AVATAR_DISK)->url($this->avatar_path)
-            : $this->google_avatar_url);
+        return Attribute::get(function (): ?string {
+            $path = $this->avatar_path ?? $this->telegram_avatar_path;
+
+            return $path !== null ? Storage::disk(self::AVATAR_DISK)->url($path) : $this->google_avatar_url;
+        });
+    }
+
+    /** How the admin panel tells people apart: the email, or the Telegram @username. */
+    protected function contact(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->email
+            ?? ($this->telegram_username !== null ? '@'.$this->telegram_username : ($this->telegram_id !== null ? 'Telegram' : null)));
+    }
+
+    /** A new API session for one phone. */
+    public function issueApiToken(string $device): string
+    {
+        return $this->createToken($device, ['*'], now()->addDays(self::TOKEN_DAYS))->plainTextToken;
     }
 
     public function canAccessPanel(Panel $panel): bool

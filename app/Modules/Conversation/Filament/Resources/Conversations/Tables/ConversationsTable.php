@@ -23,7 +23,7 @@ final class ConversationsTable
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'scenario']))
             ->defaultSort('started_at', 'desc')
             ->columns([
-                TextColumn::make('user.name')->label('Foydalanuvchi')->searchable()->description(fn ($record) => $record->user->email),
+                TextColumn::make('user.name')->label('Foydalanuvchi')->searchable()->description(fn ($record) => $record->user->contact),
                 TextColumn::make('scenario.title.uz')->label('Stsenariy'),
                 TextColumn::make('target_language')->label('Til')->badge(),
                 TextColumn::make('state')->label('Holat')->badge()

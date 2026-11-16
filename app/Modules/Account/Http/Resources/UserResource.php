@@ -16,7 +16,9 @@ final class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            // Null for an account made with Telegram, which has its @username (when the person set one) instead.
             'email' => $this->email,
+            'telegram_username' => $this->telegram_username,
             'avatar_url' => $this->avatar_url,
             'avatar_custom' => $this->avatar_path !== null,
             'gender' => $profile?->gender?->value,

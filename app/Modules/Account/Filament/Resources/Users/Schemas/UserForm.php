@@ -16,11 +16,14 @@ final class UserForm
     {
         return $schema->components([
             Section::make('Profil')
-                ->description('Ism va email Google akkauntidan olinadi va har kirishda yangilanadi.')
+                ->description('Ism va email Google yoki Telegram akkauntidan olinadi.')
                 ->columns(2)
                 ->schema([
                     TextInput::make('name')->label('Ism')->disabled()->dehydrated(false),
-                    TextInput::make('email')->label('Email')->disabled()->dehydrated(false),
+                    TextInput::make('email')->label('Email')->disabled()->dehydrated(false)
+                        ->visible(fn (User $record) => $record->email !== null),
+                    TextInput::make('telegram_username')->label('Telegram')->prefix('@')->disabled()->dehydrated(false)
+                        ->visible(fn (User $record) => $record->telegram_id !== null),
                 ]),
 
             Section::make('Admin kirishi')
@@ -36,7 +39,7 @@ final class UserForm
                         ->revealable()
                         ->minLength(12)
                         ->dehydrated(fn (?string $state) => filled($state))
-                        ->helperText('Bo\'sh qoldirilsa o\'zgarmaydi. Faqat adminlarga kerak, o\'quvchilar Google orqali kiradi.'),
+                        ->helperText('Bo\'sh qoldirilsa o\'zgarmaydi. Faqat adminlarga kerak, o\'quvchilar Google yoki Telegram orqali kiradi.'),
                 ]),
         ]);
     }

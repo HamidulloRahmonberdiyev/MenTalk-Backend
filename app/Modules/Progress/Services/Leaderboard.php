@@ -79,7 +79,7 @@ final class Leaderboard
 
         $users = User::query()
             ->whereKey($rows->pluck('user_id')->all())
-            ->get(['id', 'name', 'avatar_path', 'google_avatar_url'])
+            ->get(['id', 'name', 'avatar_path', 'telegram_avatar_path', 'google_avatar_url'])
             ->keyBy('id');
 
         return $rows->values()->map(fn (object $row, int $index): array => [

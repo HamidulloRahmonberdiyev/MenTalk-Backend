@@ -23,7 +23,7 @@ final class SupportTicketsTable
             ->columns([
                 TextColumn::make('created_at')->label('Sana')->dateTime('d.m.Y H:i')->sortable(),
                 TextColumn::make('user.name')->label('Foydalanuvchi')->searchable()
-                    ->description(fn ($record) => $record->user?->email),
+                    ->description(fn ($record) => $record->user?->contact),
                 TextColumn::make('category')->label('Turi')->badge()
                     ->formatStateUsing(fn (TicketCategory $state) => $state->label())
                     ->color(fn (TicketCategory $state) => $state->color()),
