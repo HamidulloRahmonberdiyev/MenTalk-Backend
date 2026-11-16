@@ -70,6 +70,14 @@ final readonly class HandleTelegramUpdate
         $login = TelegramLogin::findByCode($code);
         $language = $login?->language ?? $from->interfaceLanguage();
 
+        // The same person opening the link again after confirming: remind them where to go.
+        if ($login !== null && $login->telegram_user_id === $from->id
+            && in_array($login->status, [TelegramLoginStatus::Approved, TelegramLoginStatus::Completed], true)) {
+            $this->bot->sendMessage($chatId, $this->text('approved', $language), $this->returnButton($language));
+
+            return;
+        }
+
         if ($login === null || ! $login->isOpen()) {
             $this->bot->sendMessage($chatId, $this->text('expired', $language));
 

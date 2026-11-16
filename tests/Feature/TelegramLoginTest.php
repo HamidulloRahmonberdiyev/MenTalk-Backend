@@ -154,6 +154,11 @@ final class TelegramLoginTest extends TestCase
 
         $this->check($login)->assertExactJson(['data' => ['status' => 'expired']]);
         $this->withToken($token)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.name', 'Ali Valiyev');
+
+        // Opening the used link again only points back to the app.
+        $this->open($login['code']);
+        $this->assertStringContainsString('Вход подтверждён', $this->sent('sendMessage')[1]['text']);
+        $this->assertSame(1, $user->tokens()->count());
     }
 
     public function test_the_confirmation_offers_a_way_back_to_the_app(): void

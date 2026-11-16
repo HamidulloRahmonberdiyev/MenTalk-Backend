@@ -131,6 +131,48 @@ const { data } = await api.post('/auth/google', { id_token: idToken, device: Dev
 await SecureStore.setItemAsync('token', data.data.token);
 ```
 
+### Telegram orqali kirish (@mentalk_auth_bot)
+
+Oqim: ilova urinish ochadi → Telegram'da botni ochadi → odam botda «Tasdiqlash»ni bosadi → ilova
+`secret` bilan so'rab turib, sessiya tokenini **bir marta** oladi. Faqat linkni ochgan Telegram
+foydalanuvchisi tasdiqlay oladi, shuning uchun begona yuborgan havola orqali hisobga kirib bo'lmaydi.
+
+**`POST /auth/telegram`** (limit: 10/daqiqa, IP bo'yicha)
+
+```json
+// Request
+{ "device": "Google Pixel 8 · Android 15", "ui_language": "uz" }   // device botdagi tasdiqlash xabarida ko'rinadi
+// Response 201
+{
+  "data": {
+    "id": "01jd…", "secret": "<64 belgi — faqat telefonda saqlanadi>",
+    "bot_username": "mentalk_auth_bot",
+    "app_url": "tg://resolve?domain=mentalk_auth_bot&start=<code>",  // avval shuni oching
+    "bot_url": "https://t.me/mentalk_auth_bot?start=<code>",         // Telegram o'rnatilmagan bo'lsa
+    "expires_at": "2026-11-16T10:05:00Z", "poll_interval_ms": 2000
+  }
+}
+// 503 { "type": "telegram_unavailable" } — botning tokeni sozlanmagan
+```
+
+**`POST /auth/telegram/{id}`** — holatni so'rash (limit: 60/daqiqa, urinish bo'yicha)
+
+```json
+// Request
+{ "secret": "<64 belgi>" }
+// Response 200
+{ "data": { "status": "pending" } }    // bot hali ochilmagan
+{ "data": { "status": "opened" } }     // bot tasdiqlashni so'rayapti
+{ "data": { "status": "approved", "token": "1|…", "user": { /* User */ } } }  // faqat bir marta
+{ "data": { "status": "declined" } }   // botda bekor qilindi (yoki hisob bloklangan)
+{ "data": { "status": "expired" } }    // muddati tugagan yoki token allaqachon olingan
+// 404 — noto'g'ri id yoki secret · 403 { "type": "blocked" }
+```
+
+Server: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` (.env), so'ng `php artisan telegram:setup`
+(webhook + bot tavsiflari). Lokal kompyuterda: `php artisan telegram:setup --local` va `php artisan telegram:poll`.
+Bot «MenTalk'ga qaytish» tugmasi `GET /telegram/return` sahifasi orqali `govori://telegram-return` ni ochadi.
+
 ### `DELETE /auth/session` — chiqish (logout)
 `204 No Content`. Keyin tokenni qurilmadan o'chiring.
 
@@ -140,7 +182,8 @@ await SecureStore.setItemAsync('token', data.data.token);
 {
   "id": 1,
   "name": "Ali",
-  "email": "ali@gmail.com",
+  "email": "ali@gmail.com",          // Telegram orqali ochilgan hisobda null
+  "telegram_username": null,         // Telegram hisobida @username (bo'lsa)
   "avatar_url": "https://…",     // yuklangan rasm, bo'lmasa Google rasmi | null
   "avatar_custom": false,        // true: foydalanuvchi o'zi yuklagan (o'chirsa bo'ladi)
   "gender": "male",              // "male" | "female" | null
