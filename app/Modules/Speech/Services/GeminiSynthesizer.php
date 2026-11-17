@@ -15,6 +15,9 @@ final readonly class GeminiSynthesizer implements SpeechSynthesizer
     /** Natural Russian runs at ~70 ms per character; well under a third of that is not speech. */
     private const MIN_MS_PER_CHAR = 20;
 
+    /** A line is voiced in a few seconds; one that takes longer is better tried again than waited for. */
+    private const TIMEOUT = 10;
+
     public function __construct(private GeminiTransport $transport, private string $model) {}
 
     public function speak(string $text, string $voice): SpeechClip
@@ -25,7 +28,7 @@ final readonly class GeminiSynthesizer implements SpeechSynthesizer
                 'responseModalities' => ['AUDIO'],
                 'speechConfig' => ['voiceConfig' => ['prebuiltVoiceConfig' => ['voiceName' => $voice]]],
             ],
-        ]);
+        ], self::TIMEOUT);
 
         $inline = collect($response['candidates'][0]['content']['parts'] ?? [])->firstWhere('inlineData')['inlineData']
             ?? throw new AiRejected('No audio in response');

@@ -35,12 +35,14 @@ final class GeminiTransport
         ], static fn ($value) => $value !== null));
     }
 
-    public function generate(string $model, array $payload): array
+    /** @param  int|null  $timeout  seconds, for a call that must answer sooner than usual */
+    public function generate(string $model, array $payload, ?int $timeout = null): array
     {
         $key = $this->keys->acquire();
         $response = $this->http->post("models/{$model}:generateContent", [
             'json' => $payload,
             'headers' => ['x-goog-api-key' => $key],
+            'timeout' => $timeout ?? $this->readTimeout,
         ]);
         $this->ensureOk($response, $key);
 
