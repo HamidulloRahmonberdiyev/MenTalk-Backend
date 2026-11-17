@@ -4,38 +4,37 @@ declare(strict_types=1);
 
 namespace App\Modules\Account\Actions;
 
+use App\Modules\Account\DTO\TelegramContact;
 use App\Modules\Account\DTO\TelegramUser;
 use App\Modules\Account\Enums\TelegramLoginStatus;
 use App\Modules\Account\Exceptions\AccountBlocked;
 use App\Modules\Account\Models\TelegramLogin;
 use App\Modules\Account\Services\TelegramBot;
 use App\Modules\Language\Enums\InterfaceLanguage;
+use Closure;
 use Illuminate\Support\Facades\DB;
 
 /**
  * The sign-in bot's conversation. The app's deep link arrives as `/start <code>`; the bot answers with
- * the device asking to sign in and two buttons. Only "confirm", pressed by the same Telegram user,
- * ties the attempt to an account: a link someone else sent cannot sign their phone into yours.
+ * the device asking to sign in and a keyboard whose button shares the person's phone number. Only that
+ * number, sent by the Telegram user who opened the link, ties the attempt to an account: a link someone
+ * else sent cannot sign their phone into yours, and a contact card from the address book is refused.
  *
  * @see https://core.telegram.org/bots/features#deep-linking
+ * @see https://core.telegram.org/bots/api#keyboardbutton
  */
 final readonly class HandleTelegramUpdate
 {
     private const START = '/^\/start(?:@\w+)?(?:\s+([A-Za-z0-9_-]{1,64}))?$/';
 
-    private const BUTTON = '/^login:(approve|decline):([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26})$/';
+    /** Goes with every final answer, so the phone button never outlives the request it belongs to. */
+    private const REMOVE_KEYBOARD = ['reply_markup' => ['remove_keyboard' => true]];
 
     public function __construct(private TelegramBot $bot, private ResolveTelegramAccount $resolveAccount) {}
 
     /** @param  array<string, mixed>  $update */
     public function __invoke(array $update): void
     {
-        if (is_array($update['callback_query'] ?? null)) {
-            $this->onButton($update['callback_query']);
-
-            return;
-        }
-
         $message = $update['message'] ?? null;
 
         // Groups and channels are not for signing in; neither are other bots.
@@ -50,19 +49,36 @@ final readonly class HandleTelegramUpdate
             return;
         }
 
-        if (preg_match(self::START, trim((string) ($message['text'] ?? '')), $match) !== 1) {
-            $this->bot->sendMessage($chatId, $this->text('help', $from->interfaceLanguage()));
+        $text = trim((string) ($message['text'] ?? ''));
+        $contact = is_array($message['contact'] ?? null) ? $message['contact'] : null;
+
+        if (preg_match(self::START, $text, $match) === 1) {
+            isset($match[1])
+                ? $this->onStart($chatId, $from, $match[1])
+                : $this->bot->sendMessage($chatId, $this->text('welcome', $from->interfaceLanguage(), ['name' => e($from->firstName)]));
 
             return;
         }
 
-        if (! isset($match[1])) {
-            $this->bot->sendMessage($chatId, $this->text('welcome', $from->interfaceLanguage(), ['name' => e($from->firstName)]));
+        $login = TelegramLogin::answerableBy($from->id)->first();
+
+        if ($login === null) {
+            // Also clears a phone button left over from a request that has since expired.
+            $this->bot->sendMessage($chatId, $this->text($contact !== null ? 'expired' : 'help', $from->interfaceLanguage()), self::REMOVE_KEYBOARD);
 
             return;
         }
 
-        $this->onStart($chatId, $from, $match[1]);
+        $language = $login->language ?? $from->interfaceLanguage();
+
+        if ($contact !== null) {
+            $this->onContact($chatId, $from, $login, $language, $contact);
+        } elseif ($this->isCancel($text)) {
+            $this->onCancel($chatId, $login, $language);
+        } else {
+            // A number typed by hand proves nothing: only the button sends one Telegram has verified.
+            $this->askForPhone($chatId, 'phone_hint', $language);
+        }
     }
 
     private function onStart(int $chatId, TelegramUser $from, string $code): void
@@ -70,9 +86,8 @@ final readonly class HandleTelegramUpdate
         $login = TelegramLogin::findByCode($code);
         $language = $login?->language ?? $from->interfaceLanguage();
 
-        // The same person opening the link again after confirming: remind them where to go.
-        if ($login !== null && $login->telegram_user_id === $from->id
-            && in_array($login->status, [TelegramLoginStatus::Approved, TelegramLoginStatus::Completed], true)) {
+        // The same person opening the link again after signing in: remind them where to go.
+        if ($login !== null && $login->telegram_user_id === $from->id && $login->status->wasApproved()) {
             $this->bot->sendMessage($chatId, $this->text('approved', $language), $this->returnButton($language));
 
             return;
@@ -90,14 +105,9 @@ final readonly class HandleTelegramUpdate
             return;
         }
 
-        $sent = $this->bot->sendMessage($chatId, $this->text('prompt', $language, [
+        $sent = $this->askForPhone($chatId, 'prompt', $language, [
             'device' => e($login->device),
             'minutes' => max(1, (int) ceil(now()->diffInSeconds($login->expires_at) / 60)),
-        ]), [
-            'reply_markup' => ['inline_keyboard' => [[
-                ['text' => $this->text('approve', $language), 'callback_data' => "login:approve:{$login->id}"],
-                ['text' => $this->text('decline', $language), 'callback_data' => "login:decline:{$login->id}"],
-            ]]],
         ]);
 
         // Claimed only if nobody else got there first.
@@ -112,48 +122,24 @@ final readonly class HandleTelegramUpdate
             ]);
     }
 
-    /** @param  array<string, mixed>  $query */
-    private function onButton(array $query): void
+    /** @param  array<string, mixed>  $payload */
+    private function onContact(int $chatId, TelegramUser $from, TelegramLogin $login, InterfaceLanguage $language, array $payload): void
     {
-        $from = TelegramUser::fromUpdate($query['from']);
+        $contact = TelegramContact::fromUpdate($payload);
 
-        if (preg_match(self::BUTTON, (string) ($query['data'] ?? ''), $match) !== 1) {
-            $this->bot->answerCallbackQuery((string) $query['id']);
+        if ($contact === null || ! $contact->belongsTo($from)) {
+            $this->askForPhone($chatId, 'foreign_phone', $language);
 
             return;
         }
 
-        [, $action, $loginId] = $match;
-
-        [$outcome, $language] = DB::transaction(function () use ($action, $loginId, $from): array {
-            $login = TelegramLogin::query()->lockForUpdate()->find($loginId);
-
-            if ($login === null || $login->telegram_user_id !== $from->id) {
-                return ['expired', $from->interfaceLanguage()];
-            }
-
-            $language = $login->language ?? $from->interfaceLanguage();
-
-            if (! $login->isOpen()) {
-                return [match ($login->status) {
-                    TelegramLoginStatus::Approved, TelegramLoginStatus::Completed => 'approved',
-                    TelegramLoginStatus::Declined => 'declined',
-                    default => 'expired',
-                }, $language];
-            }
-
-            if ($action === 'decline') {
-                $login->update(['status' => TelegramLoginStatus::Declined]);
-
-                return ['declined', $language];
-            }
-
+        $outcome = $this->settle($login, function (TelegramLogin $login) use ($from, $contact): string {
             try {
-                $user = ($this->resolveAccount)($from, $login->language);
+                $user = ($this->resolveAccount)($from, $contact, $login->language);
             } catch (AccountBlocked) {
                 $login->update(['status' => TelegramLoginStatus::Declined]);
 
-                return ['blocked', $language];
+                return 'blocked';
             }
 
             // The app now has a fresh window to collect its session.
@@ -164,25 +150,99 @@ final readonly class HandleTelegramUpdate
                 'expires_at' => now()->addSeconds((int) config('telegram.login_ttl_seconds')),
             ]);
 
-            return ['approved', $language];
+            return 'approved';
         });
 
-        $this->bot->answerCallbackQuery((string) $query['id'], $this->text("{$outcome}_toast", $language), alert: $outcome === 'expired');
+        $this->conclude($chatId, $language, $outcome);
+    }
 
-        $message = $query['message'] ?? null;
+    private function onCancel(int $chatId, TelegramLogin $login, InterfaceLanguage $language): void
+    {
+        $outcome = $this->settle($login, function (TelegramLogin $login): string {
+            $login->update(['status' => TelegramLoginStatus::Declined]);
 
-        // A message older than 48 hours arrives as "inaccessible" (date 0) and cannot be edited.
-        if (! is_array($message) || ($message['date'] ?? 0) === 0) {
+            return 'declined';
+        });
+
+        $this->conclude($chatId, $language, $outcome);
+    }
+
+    /**
+     * Decides the request under a row lock, so two messages racing (a double tap, "cancel" right after
+     * the number) cannot both settle it. A request that is no longer open reports how it ended instead.
+     *
+     * @param  Closure(TelegramLogin): ('approved'|'declined'|'blocked')  $decide
+     * @return 'approved'|'declined'|'blocked'|'expired'
+     */
+    private function settle(TelegramLogin $login, Closure $decide): string
+    {
+        return DB::transaction(function () use ($login, $decide): string {
+            $login = TelegramLogin::query()->lockForUpdate()->findOrFail($login->id);
+
+            if ($login->isOpen()) {
+                return $decide($login);
+            }
+
+            return match (true) {
+                $login->status->wasApproved() => 'approved',
+                $login->status === TelegramLoginStatus::Declined => 'declined',
+                default => 'expired',
+            };
+        });
+    }
+
+    /**
+     * Tells the person how their request ended and takes the phone keyboard away.
+     *
+     * @param  'approved'|'declined'|'blocked'|'expired'  $outcome
+     */
+    private function conclude(int $chatId, InterfaceLanguage $language, string $outcome): void
+    {
+        $back = $outcome === 'approved' ? $this->returnButton($language) : [];
+
+        if ($back === []) {
+            $this->bot->sendMessage($chatId, $this->text($outcome, $language, ['support' => e((string) config('support.telegram_url'))]), self::REMOVE_KEYBOARD);
+
             return;
         }
 
-        // Cosmetic: the outcome already stands even if Telegram refuses the edit.
-        rescue(fn () => $this->bot->editMessageText(
-            (int) $message['chat']['id'],
-            (int) $message['message_id'],
-            $this->text($outcome, $language, ['support' => e((string) config('support.telegram_url'))]),
-            $outcome === 'approved' ? $this->returnButton($language) : [],
-        ));
+        // A message carries a single keyboard: this one takes the phone button away, the next leads back to the app.
+        $this->bot->sendMessage($chatId, $this->text('phone_saved', $language), self::REMOVE_KEYBOARD);
+        $this->bot->sendMessage($chatId, $this->text('approved', $language), $back);
+    }
+
+    /**
+     * Sends $key with the keyboard that shares the phone number; the text may name that button as `:button`.
+     *
+     * @param  array<string, string|int>  $replace
+     * @return array<string, mixed> the sent message
+     */
+    private function askForPhone(int $chatId, string $key, InterfaceLanguage $language, array $replace = []): array
+    {
+        $button = $this->text('share_phone', $language);
+
+        return $this->bot->sendMessage($chatId, $this->text($key, $language, ['button' => e($button), ...$replace]), [
+            'reply_markup' => [
+                'keyboard' => [
+                    [['text' => $button, 'request_contact' => true]],
+                    [['text' => $this->text('decline', $language)]],
+                ],
+                'resize_keyboard' => true,
+                'input_field_placeholder' => $this->text('phone_placeholder', $language),
+            ],
+        ]);
+    }
+
+    /** The keyboard's cancel button arrives as its label, in whichever language it was shown. */
+    private function isCancel(string $text): bool
+    {
+        foreach (InterfaceLanguage::cases() as $language) {
+            if ($text === $this->text('decline', $language)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** "Back to MenTalk", through a page that opens the app: Telegram buttons accept only http(s) links. */

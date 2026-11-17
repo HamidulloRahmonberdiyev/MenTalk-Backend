@@ -36,7 +36,8 @@ final class User extends Authenticatable implements FilamentUser
     /** How long a phone stays signed in without signing in again. */
     private const TOKEN_DAYS = 90;
 
-    // is_admin, password, blocked_at and the avatar paths are deliberately not mass assignable.
+    // is_admin, password, blocked_at, the avatar paths and the phone (only ever a number Telegram verified)
+    // are deliberately not mass assignable.
     protected $fillable = ['google_id', 'telegram_id', 'telegram_username', 'email', 'name', 'google_avatar_url'];
 
     protected $hidden = ['password', 'remember_token'];
@@ -49,6 +50,7 @@ final class User extends Authenticatable implements FilamentUser
         'telegram_id' => null,
         'telegram_username' => null,
         'telegram_avatar_path' => null,
+        'phone' => null,
     ];
 
     protected function casts(): array
@@ -86,11 +88,18 @@ final class User extends Authenticatable implements FilamentUser
         });
     }
 
-    /** How the admin panel tells people apart: the email, or the Telegram @username. */
+    /** How the admin panel tells people apart: the email, or the Telegram @username and phone number. */
     protected function contact(): Attribute
     {
-        return Attribute::get(fn (): ?string => $this->email
-            ?? ($this->telegram_username !== null ? '@'.$this->telegram_username : ($this->telegram_id !== null ? 'Telegram' : null)));
+        return Attribute::get(function (): ?string {
+            if ($this->email !== null) {
+                return $this->email;
+            }
+
+            $telegram = array_filter([$this->telegram_username !== null ? '@'.$this->telegram_username : null, $this->phone]);
+
+            return $telegram !== [] ? implode(' · ', $telegram) : ($this->telegram_id !== null ? 'Telegram' : null);
+        });
     }
 
     /** A new API session for one phone. */

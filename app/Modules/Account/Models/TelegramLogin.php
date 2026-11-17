@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One "sign in with Telegram" attempt. The app holds the secret and polls; the bot learns the code
- * from the deep link, shows a confirmation, and on "confirm" ties the attempt to an account.
+ * from the deep link, asks for the phone number, and once it is shared ties the attempt to an account.
  *
  * @property TelegramLoginStatus $status
  * @property ?InterfaceLanguage $language
@@ -49,6 +49,22 @@ final class TelegramLogin extends Model
     public static function findByCode(string $code): ?self
     {
         return self::query()->where('code_hash', self::hash($code))->first();
+    }
+
+    /**
+     * The request a Telegram user is answering: still open, and the last one the bot prompted them with,
+     * since that prompt's keyboard is the one on their screen.
+     *
+     * @return Builder<self>
+     */
+    public static function answerableBy(int $telegramUserId): Builder
+    {
+        return self::query()
+            ->where('telegram_user_id', $telegramUserId)
+            ->where('status', TelegramLoginStatus::Opened)
+            ->where('expires_at', '>', now())
+            ->latest('updated_at')
+            ->latest('id');
     }
 
     public function hasSecret(string $secret): bool

@@ -75,7 +75,8 @@ final class SetUpTelegram extends Command
         $bot->call('setWebhook', [
             'url' => $url,
             'secret_token' => $secret,
-            'allowed_updates' => ['message', 'callback_query'],
+            // The bot speaks through messages only: the phone number arrives as one, and so does "cancel".
+            'allowed_updates' => ['message'],
             'drop_pending_updates' => true,
             'max_connections' => 40,
         ]);

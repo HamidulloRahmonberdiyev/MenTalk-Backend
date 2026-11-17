@@ -24,6 +24,9 @@ final class UserForm
                         ->visible(fn (User $record) => $record->email !== null),
                     TextInput::make('telegram_username')->label('Telegram')->prefix('@')->disabled()->dehydrated(false)
                         ->visible(fn (User $record) => $record->telegram_id !== null),
+                    TextInput::make('phone')->label('Telefon')->disabled()->dehydrated(false)
+                        ->helperText('Telegram tasdiqlagan raqam, har kirishda yangilanadi.')
+                        ->visible(fn (User $record) => $record->phone !== null),
                 ]),
 
             Section::make('Admin kirishi')

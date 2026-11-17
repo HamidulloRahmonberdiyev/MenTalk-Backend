@@ -38,7 +38,7 @@ final class PollTelegram extends Command
                 $updates = $bot->call('getUpdates', [
                     'offset' => $offset,
                     'timeout' => self::WAIT_SECONDS,
-                    'allowed_updates' => ['message', 'callback_query'],
+                    'allowed_updates' => ['message'],
                 ], timeout: self::WAIT_SECONDS + 10);
             } catch (TelegramUnavailable $error) {
                 $this->components->warn($error->getMessage());

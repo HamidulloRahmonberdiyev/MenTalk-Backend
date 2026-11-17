@@ -9,6 +9,7 @@ use App\Modules\Account\Models\TelegramLogin;
 use App\Modules\Account\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,6 +25,10 @@ final class TelegramLoginTest extends TestCase
     private const ALI = ['id' => 555001, 'is_bot' => false, 'first_name' => 'Ali', 'last_name' => 'Valiyev', 'username' => 'alivaliyev', 'language_code' => 'ru'];
 
     private const VALI = ['id' => 555002, 'is_bot' => false, 'first_name' => 'Vali', 'language_code' => 'uz'];
+
+    private const ALI_PHONE = '998901234567';
+
+    private const REMOVE_KEYBOARD = ['remove_keyboard' => true];
 
     protected function setUp(): void
     {
@@ -62,25 +67,36 @@ final class TelegramLoginTest extends TestCase
         return $this->postJson("{$this->root}/api/v1/telegram/webhook", ['update_id' => random_int(1, PHP_INT_MAX), ...$update], ['X-Telegram-Bot-Api-Secret-Token' => self::SECRET]);
     }
 
-    private function open(string $code, array $from = self::ALI): void
+    /** A private message from $from to the bot. */
+    private function message(array $from, array $content): void
     {
         $this->webhook(['message' => [
-            'message_id' => 1,
+            'message_id' => random_int(1, 1000),
             'date' => time(),
             'chat' => ['id' => $from['id'], 'type' => 'private'],
             'from' => $from,
-            'text' => "/start {$code}",
+            ...$content,
         ]])->assertNoContent();
     }
 
-    private function press(string $action, string $loginId, array $from = self::ALI): void
+    private function open(string $code, array $from = self::ALI): void
     {
-        $this->webhook(['callback_query' => [
-            'id' => 'cq-'.Str::random(6),
-            'from' => $from,
-            'message' => ['message_id' => 77, 'date' => time(), 'chat' => ['id' => $from['id'], 'type' => 'private']],
-            'data' => "login:{$action}:{$loginId}",
-        ]])->assertNoContent();
+        $this->message($from, ['text' => "/start {$code}"]);
+    }
+
+    private function say(string $text, array $from = self::ALI): void
+    {
+        $this->message($from, ['text' => $text]);
+    }
+
+    /** What the "share phone number" button sends: the sender's own number, with their user id. */
+    private function sharePhone(array $from = self::ALI, string $phone = self::ALI_PHONE, ?int $owner = null): void
+    {
+        $this->message($from, ['contact' => array_filter([
+            'phone_number' => $phone,
+            'first_name' => $from['first_name'],
+            'user_id' => $owner ?? $from['id'],
+        ])]);
     }
 
     private function check(array $login): TestResponse
@@ -93,6 +109,20 @@ final class TelegramLoginTest extends TestCase
     {
         return Http::recorded(fn (Request $request) => str_ends_with($request->url(), "/{$method}"))
             ->map(fn (array $pair) => $pair[0]->data())->values()->all();
+    }
+
+    /** @return array<string, mixed> the bot's latest message */
+    private function lastMessage(): array
+    {
+        return Arr::last($this->sent('sendMessage'));
+    }
+
+    private function assertAsksForThePhone(array $message): void
+    {
+        $this->assertSame(
+            [[['text' => '📱 Отправить номер', 'request_contact' => true]], [['text' => '✖️ Отменить']]],
+            $message['reply_markup']['keyboard'],
+        );
     }
 
     public function test_start_returns_deep_links_and_keeps_only_hashes(): void
@@ -121,43 +151,47 @@ final class TelegramLoginTest extends TestCase
         $this->postJson('/api/v1/auth/telegram', ['device' => 'iPhone'])->assertStatus(503)->assertJsonPath('type', 'telegram_unavailable');
     }
 
-    public function test_confirming_in_telegram_signs_the_app_in_once(): void
+    public function test_sharing_the_phone_number_signs_the_app_in_once(): void
     {
         $login = $this->start();
 
         $this->open($login['code']);
 
-        $prompt = $this->sent('sendMessage')[0];
+        $prompt = $this->lastMessage();
         $this->assertSame(self::ALI['id'], $prompt['chat_id']);
         $this->assertStringContainsString('Pixel 8 · Android 15', $prompt['text']);
         $this->assertStringContainsString('Вход в MenTalk', $prompt['text'], 'The bot speaks the language the app asked for.');
-        $this->assertSame("login:approve:{$login['id']}", $prompt['reply_markup']['inline_keyboard'][0][0]['callback_data']);
+        $this->assertStringContainsString('«📱 Отправить номер»', $prompt['text']);
+        $this->assertAsksForThePhone($prompt);
         $this->check($login)->assertExactJson(['data' => ['status' => 'opened']]);
 
-        $this->press('approve', $login['id']);
+        $this->sharePhone();
 
         $user = User::query()->where('telegram_id', self::ALI['id'])->sole();
         $this->assertSame('Ali Valiyev', $user->name);
+        $this->assertSame('+998901234567', $user->phone);
         $this->assertNull($user->email);
         $this->assertSame("{$user->id}/telegram-AQADb.jpg", $user->telegram_avatar_path, 'The largest photo size is copied.');
         Storage::disk(User::AVATAR_DISK)->assertExists($user->telegram_avatar_path);
         $this->assertSame('ru', $user->profile->ui_language->value);
-        $this->assertStringContainsString('Вход подтверждён', $this->sent('editMessageText')[0]['text']);
+        $this->assertStringContainsString('Вход подтверждён', $this->lastMessage()['text']);
+        $this->assertSame(self::REMOVE_KEYBOARD, $this->lastMessage()['reply_markup'], 'The phone button goes away once used.');
 
         $token = $this->check($login)->assertOk()
             ->assertJsonPath('data.status', 'approved')
             ->assertJsonPath('data.user.name', 'Ali Valiyev')
             ->assertJsonPath('data.user.email', null)
+            ->assertJsonPath('data.user.phone', '+998901234567')
             ->assertJsonPath('data.user.telegram_username', 'alivaliyev')
             ->assertJsonPath('data.user.avatar_url', Storage::disk(User::AVATAR_DISK)->url($user->telegram_avatar_path))
             ->json('data.token');
 
         $this->check($login)->assertExactJson(['data' => ['status' => 'expired']]);
-        $this->withToken($token)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.name', 'Ali Valiyev');
+        $this->withToken($token)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.phone', '+998901234567');
 
         // Opening the used link again only points back to the app.
         $this->open($login['code']);
-        $this->assertStringContainsString('Вход подтверждён', $this->sent('sendMessage')[1]['text']);
+        $this->assertStringContainsString('Вход подтверждён', $this->lastMessage()['text']);
         $this->assertSame(1, $user->tokens()->count());
     }
 
@@ -167,10 +201,13 @@ final class TelegramLoginTest extends TestCase
         $login = $this->start();
         $this->open($login['code']);
 
-        $this->press('approve', $login['id']);
+        $this->sharePhone();
 
-        $button = $this->sent('editMessageText')[0]['reply_markup']['inline_keyboard'][0][0];
-        $this->assertSame('https://api.mentalk.test/telegram/return?lang=ru', $button['url']);
+        // One message per keyboard: the first removes the phone button, the second carries the link.
+        [, $received, $approved] = $this->sent('sendMessage');
+        $this->assertSame(self::REMOVE_KEYBOARD, $received['reply_markup']);
+        $this->assertStringContainsString('Вход подтверждён', $approved['text']);
+        $this->assertSame('https://api.mentalk.test/telegram/return?lang=ru', $approved['reply_markup']['inline_keyboard'][0][0]['url']);
 
         $this->get('/telegram/return?lang=uz', ['User-Agent' => 'Mozilla/5.0 (Linux; Android 15)'])->assertOk()
             ->assertSee('intent://telegram-return#Intent;scheme=govori;package=com.hamidullo_rahmonberdiyev.govori;end', false)
@@ -178,24 +215,64 @@ final class TelegramLoginTest extends TestCase
         $this->get('/telegram/return', ['User-Agent' => 'Mozilla/5.0 (iPhone)'])->assertOk()->assertSee('govori://telegram-return', false);
     }
 
-    public function test_a_returning_user_keeps_the_name_they_chose(): void
+    public function test_a_returning_user_keeps_their_name_and_gets_their_current_number(): void
     {
         $user = User::factory()->create(['google_id' => null, 'email' => null, 'telegram_id' => self::ALI['id'], 'name' => 'Alijon']);
+        $user->forceFill(['phone' => '+998900000000'])->save();
 
         $login = $this->start();
         $this->open($login['code']);
-        $this->press('approve', $login['id']);
+        $this->sharePhone(phone: '+998 90 123 45 67');
 
         $this->check($login)->assertJsonPath('data.status', 'approved')->assertJsonPath('data.user.id', $user->id)->assertJsonPath('data.user.name', 'Alijon');
+        $this->assertSame('+998901234567', $user->refresh()->phone, 'The number follows the Telegram account.');
         $this->assertSame(1, User::query()->count());
     }
 
-    public function test_declining_tells_the_app(): void
+    public function test_someone_elses_contact_card_is_refused(): void
     {
         $login = $this->start();
         $this->open($login['code']);
 
-        $this->press('decline', $login['id']);
+        $this->sharePhone(phone: '998935554433', owner: self::VALI['id']);
+
+        $this->assertStringContainsString('Отправьте свой номер', $this->lastMessage()['text']);
+        $this->assertAsksForThePhone($this->lastMessage());
+
+        // A card for someone who is not on Telegram carries no user id at all.
+        $this->message(self::ALI, ['contact' => ['phone_number' => '998935554433', 'first_name' => 'Mom']]);
+
+        $this->assertStringContainsString('Отправьте свой номер', $this->lastMessage()['text']);
+        $this->check($login)->assertExactJson(['data' => ['status' => 'opened']]);
+        $this->assertSame(0, User::query()->count());
+    }
+
+    public function test_a_number_typed_by_hand_is_not_enough(): void
+    {
+        $login = $this->start();
+        $this->open($login['code']);
+
+        $this->say('+998901234567');
+
+        $this->assertStringContainsString('Вводить номер вручную не нужно', $this->lastMessage()['text']);
+        $this->assertAsksForThePhone($this->lastMessage());
+        $this->check($login)->assertExactJson(['data' => ['status' => 'opened']]);
+        $this->assertSame(0, User::query()->count());
+    }
+
+    public function test_cancelling_tells_the_app(): void
+    {
+        $login = $this->start();
+        $this->open($login['code']);
+
+        $this->say('✖️ Отменить');
+
+        $this->assertStringContainsString('Вход отменён', $this->lastMessage()['text']);
+        $this->assertSame(self::REMOVE_KEYBOARD, $this->lastMessage()['reply_markup']);
+        $this->check($login)->assertExactJson(['data' => ['status' => 'declined']]);
+
+        // The cancelled request cannot be answered after all.
+        $this->sharePhone();
 
         $this->check($login)->assertExactJson(['data' => ['status' => 'declined']]);
         $this->assertSame(0, User::query()->count());
@@ -207,9 +284,11 @@ final class TelegramLoginTest extends TestCase
         $this->open($login['code'], self::ALI);
 
         $this->open($login['code'], self::VALI);
-        $this->press('approve', $login['id'], self::VALI);
+        $this->assertStringContainsString('уже открыт в другом аккаунте Telegram', $this->lastMessage()['text']);
 
-        $this->assertStringContainsString('уже открыт в другом аккаунте Telegram', $this->sent('sendMessage')[1]['text']);
+        $this->sharePhone(self::VALI, '998935554433');
+
+        $this->assertStringContainsString('So‘rov muddati tugagan', $this->lastMessage()['text'], 'Vali has nothing to answer.');
         $this->check($login)->assertExactJson(['data' => ['status' => 'opened']]);
         $this->assertSame(0, User::query()->count());
     }
@@ -217,12 +296,17 @@ final class TelegramLoginTest extends TestCase
     public function test_an_expired_link_is_refused_by_the_bot_and_the_app(): void
     {
         $login = $this->start();
+        $this->open($login['code']);
         $this->travel(301)->seconds();
 
-        $this->open($login['code']);
-        $this->press('approve', $login['id']);
+        $this->sharePhone();
 
-        $this->assertStringContainsString('Срок запроса истёк', $this->sent('sendMessage')[0]['text']);
+        $this->assertStringContainsString('Срок запроса истёк', $this->lastMessage()['text']);
+        $this->assertSame(self::REMOVE_KEYBOARD, $this->lastMessage()['reply_markup'], 'A stale phone button is cleared.');
+
+        $this->open($login['code']);
+
+        $this->assertStringContainsString('Срок запроса истёк', $this->lastMessage()['text']);
         $this->check($login)->assertExactJson(['data' => ['status' => 'expired']]);
         $this->assertSame(0, User::query()->count());
     }
@@ -234,11 +318,21 @@ final class TelegramLoginTest extends TestCase
 
         $login = $this->start();
         $this->open($login['code']);
-        $this->press('approve', $login['id']);
+        $this->sharePhone();
 
-        $this->assertStringContainsString('заблокирован', $this->sent('editMessageText')[0]['text']);
+        $this->assertStringContainsString('заблокирован', $this->lastMessage()['text']);
+        $this->assertSame(self::REMOVE_KEYBOARD, $this->lastMessage()['reply_markup']);
         $this->check($login)->assertExactJson(['data' => ['status' => 'declined']]);
         $this->assertSame(0, $user->tokens()->count());
+        $this->assertNull($user->refresh()->phone);
+    }
+
+    public function test_without_an_open_request_the_bot_points_to_the_app(): void
+    {
+        $this->say('salom', self::VALI);
+
+        $this->assertStringContainsString('Telegram orqali kirish', $this->lastMessage()['text']);
+        $this->assertSame(self::REMOVE_KEYBOARD, $this->lastMessage()['reply_markup']);
     }
 
     public function test_checking_needs_the_secret(): void
@@ -257,15 +351,9 @@ final class TelegramLoginTest extends TestCase
 
     public function test_plain_start_greets_in_the_telegram_language(): void
     {
-        $this->webhook(['message' => [
-            'message_id' => 1,
-            'date' => time(),
-            'chat' => ['id' => self::VALI['id'], 'type' => 'private'],
-            'from' => self::VALI,
-            'text' => '/start',
-        ]])->assertNoContent();
+        $this->say('/start', self::VALI);
 
-        $this->assertStringContainsString('Assalomu alaykum, Vali!', $this->sent('sendMessage')[0]['text']);
+        $this->assertStringContainsString('Assalomu alaykum, Vali!', $this->lastMessage()['text']);
     }
 
     public function test_old_attempts_are_pruned(): void
