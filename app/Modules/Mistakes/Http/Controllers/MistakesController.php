@@ -58,7 +58,7 @@ final class MistakesController extends Controller
         $mistake = $this->find($request, $id);
         $mistake->forceFill(['dismissed_at' => null])->save();
 
-        return new MistakeResource($mistake);
+        return new MistakeResource($mistake->load(Mistake::CONTEXT));
     }
 
     private function find(Request $request, string $id): Mistake

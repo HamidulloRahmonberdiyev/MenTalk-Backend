@@ -115,6 +115,24 @@ final class MistakesTest extends TestCase
         $this->actingAs($user)->getJson('/api/v1/mistakes')->assertUnprocessable();
     }
 
+    public function test_the_notebook_and_practice_say_which_chat_a_mistake_came_from(): void
+    {
+        $user = $this->user();
+        $conversation = Conversation::factory()->create(['user_id' => $user->id, 'scenario_id' => 'cafe', 'target_language' => 'ru']);
+        app(RecordMistakes::class)($user->id, 'ru', 'uz', $conversation->id, [self::ENDING]);
+        $id = Mistake::query()->sole()->id;
+
+        $this->actingAs($user)->getJson('/api/v1/mistakes?language=ru')->assertOk()->assertJsonPath('data.0.scenario_id', 'cafe');
+        $this->actingAs($user)->getJson('/api/v1/mistakes/practice?language=ru')->assertOk()->assertJsonPath('data.0.scenario_id', 'cafe');
+        $this->actingAs($user)->postJson("/api/v1/mistakes/{$id}/restore")->assertOk()->assertJsonPath('data.scenario_id', 'cafe');
+
+        // The chat deleted: the mistake stays in the notebook, only without a topic.
+        $conversation->delete();
+
+        $this->actingAs($user)->getJson('/api/v1/mistakes/practice?language=ru')->assertOk()
+            ->assertJsonPath('data.0.id', $id)->assertJsonPath('data.0.scenario_id', null);
+    }
+
     public function test_drilling_moves_the_schedule_pays_xp_once_and_survives_a_resend(): void
     {
         $user = $this->user();

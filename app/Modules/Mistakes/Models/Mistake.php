@@ -6,6 +6,7 @@ namespace App\Modules\Mistakes\Models;
 
 use App\Modules\Account\Models\User;
 use App\Modules\Conversation\Enums\MistakeCategory;
+use App\Modules\Conversation\Models\Conversation;
 use App\Modules\Vocabulary\Enums\ReviewRating;
 use App\Modules\Vocabulary\Enums\WordStatus;
 use App\Modules\Vocabulary\Support\ReviewState;
@@ -25,6 +26,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 final class Mistake extends Model
 {
     use HasUlids;
+
+    /** What `MistakeResource` needs to say where a mistake was made: only the chat's topic. */
+    public const CONTEXT = 'conversation:id,scenario_id';
 
     protected $table = 'user_mistakes';
 
@@ -54,6 +58,12 @@ final class Mistake extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** The chat it was last made in; null once that chat is deleted. */
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(Conversation::class);
     }
 
     /** Mistakes still in the notebook: the learner has not set them aside as "not a mistake". */

@@ -30,6 +30,8 @@ final class MistakeResource extends JsonResource
             'last_seen_at' => $this->last_seen_at?->toIso8601String(),
             'last_reviewed_at' => $this->last_reviewed_at?->toIso8601String(),
             'conversation_id' => $this->conversation_id,
+            // The topic of that chat, so the app can say where the mistake was made (`Mistake::CONTEXT`).
+            'scenario_id' => $this->whenLoaded('conversation', fn () => $this->conversation?->scenario_id),
         ];
     }
 }

@@ -15,10 +15,14 @@ use Illuminate\Support\Collection;
 /** Reads a learner's notebook in one language: what is in it, and what to practise next. */
 final class Notebook
 {
-    /** @return Builder<Mistake> */
+    /**
+     * With the chat each mistake came from, so a lesson or drill can say where it was made.
+     *
+     * @return Builder<Mistake>
+     */
     public function of(User $user, string $language): Builder
     {
-        return Mistake::query()->active()->where('user_id', $user->id)->where('language', $language);
+        return Mistake::query()->active()->where('user_id', $user->id)->where('language', $language)->with(Mistake::CONTEXT);
     }
 
     /**
