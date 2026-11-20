@@ -9,7 +9,7 @@ use App\Modules\Ai\DTO\AiRequest;
 use App\Modules\Ai\Services\PromptRenderer;
 use App\Modules\Conversation\Models\Conversation;
 use App\Modules\Conversation\Services\TurnHistory;
-use App\Modules\Language\Contracts\LanguageCatalog;
+use App\Modules\Conversation\Services\TutorPersona;
 
 final readonly class RequestHint
 {
@@ -17,13 +17,13 @@ final readonly class RequestHint
         private AiClient $ai,
         private PromptRenderer $prompts,
         private TurnHistory $history,
-        private LanguageCatalog $languages,
+        private TutorPersona $persona,
     ) {}
 
     public function __invoke(Conversation $conversation): string
     {
         return $this->ai->text(new AiRequest(
-            system: $this->prompts->render('hint', $this->languages->get($conversation->target_language)),
+            system: $this->prompts->render('hint', $this->persona->language($conversation)),
             contents: [
                 ...$this->history->contents($conversation),
                 ['role' => 'user', 'parts' => [['text' => '(suggest what the learner could say next)']]],

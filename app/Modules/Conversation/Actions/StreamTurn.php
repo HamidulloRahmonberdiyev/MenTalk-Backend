@@ -10,16 +10,15 @@ use App\Modules\Conversation\DTO\TurnInput;
 use App\Modules\Conversation\DTO\TurnResult;
 use App\Modules\Conversation\Enums\TurnKind;
 use App\Modules\Conversation\Models\Conversation;
+use App\Modules\Conversation\Models\Turn;
 use App\Modules\Conversation\Services\JsonStringTap;
+use App\Modules\Conversation\Services\SpokenLine;
 use App\Modules\Conversation\Services\TurnHistory;
 use App\Modules\Conversation\Services\TurnRequests;
-use App\Modules\Language\Contracts\LanguageCatalog;
+use App\Modules\Conversation\Services\TutorPersona;
 use App\Modules\Speech\Contracts\SpeechSynthesizer;
-use App\Modules\Speech\DTO\SpeechClip;
-use App\Modules\Speech\Services\SpeechChunker;
 use Closure;
 use JsonException;
-use Throwable;
 
 /**
  * One learner turn, answered as events while it is produced (see `POST .../turns/stream`):
@@ -28,11 +27,10 @@ use Throwable;
  * - `delta`… the reply word by word, then `reply` with the finished text;
  * - `audio` for the voice. The first piece is synthesized the moment the reply text is complete, while
  *   the model is still writing up the mistakes, so the voice is ready about when the text is;
- * - `done` once the turn is saved.
+ * - `saved` with the turn's id once it is stored, so the app can ask for a voice that failed again;
+ * - `done` once every piece is voiced.
  *
- * With `$clips` the voice comes as up to two pieces (`text` and `last` on every `audio`; `url` null for
- * a piece that failed, which the app then reads with the device voice). Without it, older apps get one
- * clip for the whole reply, or no `audio` at all when that failed.
+ * The voice comes as described in {@see SpokenLine}.
  */
 final readonly class StreamTurn
 {
@@ -41,7 +39,7 @@ final readonly class StreamTurn
         private TurnRequests $requests,
         private SpeechSynthesizer $speech,
         private TurnHistory $history,
-        private LanguageCatalog $languages,
+        private TutorPersona $persona,
     ) {}
 
     /**
@@ -51,40 +49,19 @@ final readonly class StreamTurn
     public function __invoke(Conversation $conversation, TurnInput $input, bool $clips, Closure $emit, Closure $release): void
     {
         $conversation->loadMissing(['scenario', 'user.profile']);
-        $language = $this->languages->get($conversation->target_language);
-        $voice = $language->voice ?? config('ai.voice');
+        $language = $this->persona->language($conversation);
+        $line = new SpokenLine($this->speech, $this->persona->voice($conversation), $clips, $emit);
 
         $transcript = new JsonStringTap('transcript');
         $emotion = new JsonStringTap('emotion');
         $reply = new JsonStringTap('reply');
         $listening = $input->kind === TurnKind::Audio;
         $buffer = '';
-        /** @var list<string>|null $pieces */
-        $pieces = null;
-        /** @var list<SpeechClip|null> $voiced */
-        $voiced = [];
-
-        $announce = function (string $text, ?string $mood) use (&$pieces, $clips, $emit): void {
-            $emit('reply', ['id' => null, 'reply' => $text, 'emotion' => $mood ?: 'neutral']);
-            $pieces = $clips ? SpeechChunker::split($text) : [$text];
-        };
-        $voiceNext = function () use (&$pieces, &$voiced, $clips, $emit, $voice): void {
-            $index = count($voiced);
-            $text = $pieces[$index];
-            $voiced[] = $clip = $this->speak($text, $voice);
-            $last = $index === count($pieces) - 1;
-
-            if ($clips) {
-                $emit('audio', ['url' => $clip?->url, 'ms' => $clip?->durationMs, 'text' => $text, 'last' => $last]);
-            } elseif ($clip) {
-                $emit('audio', ['url' => $clip->url, 'ms' => $clip->durationMs]);
-            }
-        };
 
         try {
             $raw = $this->ai->streamJson(
                 $this->requests->make($conversation, $input, $language),
-                function (string $piece) use (&$buffer, &$pieces, &$listening, $transcript, $emotion, $reply, $emit, $announce, $voiceNext): void {
+                function (string $piece) use (&$buffer, &$listening, $transcript, $emotion, $reply, $emit, $line): void {
                     $buffer .= $piece;
 
                     if ($listening) {
@@ -95,7 +72,7 @@ final readonly class StreamTurn
                         }
                     }
 
-                    if ($pieces !== null) {
+                    if ($line->announced()) {
                         return;
                     }
 
@@ -106,8 +83,8 @@ final readonly class StreamTurn
                     }
 
                     if ($reply->closed() && trim($reply->value()) !== '') {
-                        $announce(trim($reply->value()), $emotion->closed() ? $emotion->value() : null);
-                        $voiceNext();
+                        $line->announce(trim($reply->value()), $emotion->closed() ? $emotion->value() : null);
+                        $line->voiceNext();
                     }
                 },
             );
@@ -120,38 +97,60 @@ final readonly class StreamTurn
         if ($result->reply === '') {
             throw new AiRejected('Empty reply');
         }
-        if ($pieces === null) {
-            $announce($result->reply, $result->emotion);
+        if (! $line->announced()) {
+            $line->announce($result->reply, $result->emotion);
         }
 
-        $whole = count($pieces) === 1 ? ($voiced[0] ?? null) : null;
+        $whole = $line->wholeClip();
         $turn = $this->history->append($conversation, $input, $result, $whole?->url);
         $release();
+        $emit('saved', ['id' => $turn->id]);
 
-        while (count($voiced) < count($pieces)) {
+        $this->finish($line, $turn, keepVoice: $whole === null, emit: $emit);
+    }
+
+    /**
+     * Sends a turn that was already answered once more, the same events in the same order, when the app
+     * retries it because the first answer never reached it. Nothing is asked of the model again, and the
+     * voice comes from the speech cache.
+     *
+     * @param  Closure(string, array<string, mixed>): void  $emit
+     */
+    public function replay(Conversation $conversation, Turn $tutor, TurnInput $input, bool $clips, Closure $emit): void
+    {
+        if ($input->kind === TurnKind::Audio) {
+            $said = $this->history->learnerLineBefore($tutor);
+            if ($said !== '') {
+                $emit('transcript', ['text' => $said]);
+            }
+        }
+
+        $line = new SpokenLine($this->speech, $this->persona->voice($conversation), $clips, $emit);
+        $line->announce($tutor->text, $tutor->emotion);
+        $emit('saved', ['id' => $tutor->id]);
+
+        $this->finish($line, $tutor, keepVoice: $tutor->audio_url === null, emit: $emit);
+    }
+
+    /**
+     * Voices what is left of the line, keeps a one-piece voice on the turn for the history, and ends the stream.
+     *
+     * @param  Closure(string, array<string, mixed>): void  $emit
+     */
+    private function finish(SpokenLine $line, Turn $turn, bool $keepVoice, Closure $emit): void
+    {
+        while ($line->hasUnvoicedPieces()) {
             // The app gave up on this turn (a new one was sent): don't spend TTS quota on it.
             if (connection_aborted()) {
                 return;
             }
-            $voiceNext();
+            $line->voiceNext();
         }
 
-        if (! $whole && count($pieces) === 1 && $voiced[0]) {
-            $turn->update(['audio_url' => $voiced[0]->url]);
+        if ($keepVoice && ($clip = $line->wholeClip())) {
+            $turn->update(['audio_url' => $clip->url]);
         }
 
         $emit('done', ['id' => $turn->id]);
-    }
-
-    /** Voice is a nice-to-have: without it the reply still goes out and the app reads it with the device voice. */
-    private function speak(string $text, string $voice): ?SpeechClip
-    {
-        try {
-            return $this->speech->speak($text, $voice);
-        } catch (Throwable $e) {
-            report($e);
-
-            return null;
-        }
     }
 }

@@ -12,8 +12,7 @@ use App\Modules\Conversation\Models\Conversation;
 use App\Modules\Conversation\Models\Turn;
 use App\Modules\Conversation\Services\TurnHistory;
 use App\Modules\Conversation\Services\TurnRequests;
-use App\Modules\Language\Contracts\LanguageCatalog;
-use App\Modules\Language\DTO\TutorLanguage;
+use App\Modules\Conversation\Services\TutorPersona;
 use App\Modules\Speech\Contracts\SpeechSynthesizer;
 use App\Modules\Speech\DTO\SpeechClip;
 use Illuminate\Support\Facades\Cache;
@@ -26,17 +25,17 @@ final readonly class SendTurn
         private TurnRequests $requests,
         private SpeechSynthesizer $speech,
         private TurnHistory $history,
-        private LanguageCatalog $languages,
+        private TutorPersona $persona,
     ) {}
 
     public function __invoke(Conversation $conversation, TurnInput $input): Turn
     {
         $conversation->loadMissing(['scenario', 'user.profile']);
-        $language = $this->languages->get($conversation->target_language);
+        $language = $this->persona->language($conversation);
 
         return Cache::lock("conversation:{$conversation->id}", 40)->block(3, function () use ($conversation, $input, $language) {
             $result = TurnResult::from($this->ai->json($this->requests->make($conversation, $input, $language)));
-            $clip = $this->speak($result->reply, $language);
+            $clip = $this->speak($result->reply, $this->persona->voice($conversation));
 
             return $this->history->append($conversation, $input, $result, $clip?->url)
                 ->setAttribute('audio_ms', $clip?->durationMs)
@@ -45,10 +44,10 @@ final readonly class SendTurn
     }
 
     /** Voice is a nice-to-have: without it the reply still goes out and the app reads it with the device voice. */
-    private function speak(string $text, TutorLanguage $language): ?SpeechClip
+    private function speak(string $text, string $voice): ?SpeechClip
     {
         try {
-            return $this->speech->speak($text, $language->voice ?? config('ai.voice'));
+            return $this->speech->speak($text, $voice);
         } catch (Throwable $e) {
             report($e);
 

@@ -36,7 +36,12 @@ final class LanguageForm
                         ->maxLength(40),
                     TextInput::make('tutor_name')
                         ->label('Tutor ismi')
+                        ->helperText('Ayol ovozi tanlanganda (va standart holatda).')
                         ->required()
+                        ->maxLength(40),
+                    TextInput::make('male_tutor_name')
+                        ->label('Tutor ismi (erkak ovoz)')
+                        ->helperText('O\'quvchi erkak ovozni tanlaganda tutor shu ism bilan gapiradi. Bo\'sh qolsa, yuqoridagi ism ishlatiladi.')
                         ->maxLength(40),
                     TextInput::make('voice')
                         ->label('Ovoz (TTS)')

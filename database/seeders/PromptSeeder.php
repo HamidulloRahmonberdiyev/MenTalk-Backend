@@ -102,6 +102,11 @@ TXT;
 
     public const TURN_AUDIO = 'The learner is learning {language} and answered with the attached audio. Write it into "transcript" exactly as spoken, in the language it was spoken, keeping their mistakes (never fix them in the transcript). Then reply as {tutor}, following all your rules.';
 
+    /** Who the tutor is, so the voice the learner picked and the words it says agree ("я рада" / "я рад"). */
+    public const TUTOR_SELF_FEMALE = 'You, {tutor}, are a woman: use feminine forms when you speak about yourself, where {language} has them.';
+
+    public const TUTOR_SELF_MALE = 'You, {tutor}, are a man: use masculine forms when you speak about yourself, where {language} has them. In the scenario you take the male counterpart of any role it names (a waiter, not a waitress).';
+
     public function run(): void
     {
         foreach ($this->prompts() as $key => $body) {
@@ -123,6 +128,8 @@ TXT;
             'gender.male' => 'The learner is male: use masculine forms when addressing them, where {language} has them.',
             'gender.female' => 'The learner is female: use feminine forms when addressing them, where {language} has them.',
             'gender.unspecified' => 'The learner\'s gender is unknown: avoid gendered forms when addressing them.',
+            'tutor.self.female' => self::TUTOR_SELF_FEMALE,
+            'tutor.self.male' => self::TUTOR_SELF_MALE,
             'hint' => 'Suggest one short, natural {language} sentence the learner could say next in this conversation, fitting their level. Output only the sentence.',
             'evaluation' => <<<'TXT'
 Evaluate the learner's {language} in the transcript. Score "speech", "vocabulary" and "grammar" from 0 to 10.

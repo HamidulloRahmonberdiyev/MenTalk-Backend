@@ -13,14 +13,15 @@ use App\Modules\Language\DTO\TutorLanguage;
 /** Assembles the tutor's prompts for one conversation, in the language it is held in. */
 final readonly class PromptBuilder
 {
-    public function __construct(private PromptRenderer $renderer) {}
+    public function __construct(private PromptRenderer $renderer, private TutorPersona $persona) {}
 
+    /** `$language` names the tutor as the persona does (see {@see TutorPersona::language()}). */
     public function system(Conversation $conversation, TutorLanguage $language): string
     {
         $learner = $conversation->user->profile;
         $brief = $conversation->scenario->briefFor($language->code);
 
-        return $this->renderer->render('tutor.system', $language, [
+        $system = $this->renderer->render('tutor.system', $language, [
             '{scenario}' => $this->renderer->fill($brief->brief, $language),
             '{topics}' => $brief->next_topics,
             '{learner}' => $learner->describe(),
@@ -29,6 +30,9 @@ final readonly class PromptBuilder
             '{ui_language}' => $learner->interfaceLanguage()->englishName(),
             '{flow_rules}' => $this->renderer->render('tutor.flow', $language),
         ]);
+
+        // Who speaks: the voice the learner picked decides it, so the words match the voice.
+        return $system."\n".$this->renderer->render('tutor.self.'.$this->persona->gender($conversation)->value, $language);
     }
 
     public function userParts(TurnInput $input, TutorLanguage $language): array

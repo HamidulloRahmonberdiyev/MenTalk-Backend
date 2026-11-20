@@ -281,6 +281,8 @@ Hamma `/conversations*`, `/translate`, `/vocabulary/lookup` endpointlariga **lim
 }
 ```
 
+- `"defer_opening": true` yuborilsa, suhbat darhol (AI'siz) yaratiladi va javobda faqat `conversation_id`, `target_language` keladi. Tutorning birinchi gapini ilova `turns/stream` ga `{"opening": true}` yuborib oqimda oladi (pastda). Bu birinchi gap limitdan alohida hisoblanmaydi.
+- `"voice": 4` — o'quvchi tanlagan tutor ovozi (`GET /tutor-voices` dagi `id`). Ovoz suhbatga yoziladi: suhbat oxirigacha (qayta urinishlar ham) shu ovozda. Erkak ovozda tutor tilning erkak ismi bilan va erkak shakllarida gapiradi. Yuborilmasa, o'chirilgan yoki yo'q ovoz bo'lsa — xatosiz standart ovoz.
 - `target_language` yuborilmasa, profildagi `target_language` olinadi (eski ilova versiyalari uchun).
 - Til suhbatga yoziladi: foydalanuvchi keyin tilni almashtirsa ham, boshlangan suhbat o'z tilida davom etadi. Maslahat va baholash ham shu tilda.
 - Stsenariy shu tilda bo'lmasa — `404 scenario_unavailable`; til o'chirilgan bo'lsa — `422 unsupported_language`.
@@ -326,6 +328,73 @@ const { data } = await api.post(`/conversations/${id}/turns`, { audio, mime: 'au
 ```
 
 > Yozishni `m4a`/AAC formatda sozlang (iOS: `kAudioFormatMPEG4AAC`, Android: `AAC_ADTS`/`MPEG_4`).
+
+### `POST /conversations/{id}/turns/stream` — gap yuborish, javob oqimda
+
+`turns` bilan bir xil so'rov, javob `text/event-stream` bo'lib keladi. Qo'shimcha maydonlar:
+
+- `clips: true` — ovoz 2 bo'lakkacha keladi (birinchi gap tayyor bo'lishi bilan).
+- `opening: true` — `defer_opening` bilan boshlangan suhbatning birinchi gapi (`text`/`audio` kerak emas). Birinchi gap allaqachon bo'lsa, o'sha qayta yuboriladi.
+- `client_id` — ilova bergan gap ID'si (`[A-Za-z0-9_-]`, 40 belgigacha). Aloqa uzilib, gap **o'sha `client_id` bilan** qayta yuborilsa, server AI'ga qayta murojaat qilmaydi: saqlangan javobni yana yuboradi va limitni ikkinchi marta hisoblamaydi. Shuning uchun aloqa uzilganda qayta yuborish xavfsiz.
+
+Hodisalar tartibi:
+
+| Hodisa | Ma'lumot | Izoh |
+|---|---|---|
+| `transcript` | `{text}` | Ovozli gapda: AI tanigan matn |
+| `delta` | `{text}` | Javob so'zma-so'z (qayta yuborilganda kelmaydi) |
+| `reply` | `{id: null, reply, emotion}` | Javob matni tayyor |
+| `audio` | `{url, ms, text, last}` | Ovoz bo'lagi; `url: null` — bu bo'lak ovozlanmadi |
+| `saved` | `{id}` | Gap saqlandi; `id` — ovozni qayta so'rash uchun |
+| `done` | `{id}` | Hammasi tugadi |
+| `error` | `{status}` | `503` — AI band (qayta urinish mumkin), `502` — javob olinmadi |
+
+Boshqa gap hali tugamagan bo'lsa `409 turn_in_progress` (bir necha soniyadan keyin qayta urinish mumkin), limit tugagan bo'lsa `429 quota` qaytadi.
+
+### `POST /conversations/{id}/turns/{turn}/speech` — ovozni qayta olish
+
+Tutor gapining ovozi kelmay qolganda (bo'lak `url: null` bo'lgan yoki oqim uzilgan) ishlatiladi.
+
+```json
+// Request (ixtiyoriy): faqat gapning bir qismi, masalan eshitilgan bo'lakdan keyingi qoldiq
+{ "text": "Hot or iced?" }
+
+// Response 200
+{ "data": { "url": "https://.../speech/abc.wav", "ms": 1900 } }
+```
+
+- `text` gapning ichidan olingan bo'lishi shart, aks holda `422 not_in_line`.
+- Ovoz yaratilmasa `503 speech_unavailable` (`Retry-After` bilan).
+
+### `GET /tutor-voices?language=ru` — tutor ovozlari
+
+Sozlamalar → Tutor → Ovoz uchun. Ro'yxatni admin panel ("Tutor ovozlari") boshqaradi, tartib shu yerdagidek.
+
+```json
+// Response 200
+{
+  "data": [
+    { "id": 1, "name": { "uz": "Iliq", "ru": "Тёплый", "en": "Warm" }, "gender": "female", "default": true },
+    { "id": 4, "name": { "uz": "Do‘stona", "ru": "Дружелюбный", "en": "Friendly" }, "gender": "male", "default": false }
+  ]
+}
+```
+
+- `language` ixtiyoriy: yuborilmasa, profildagi o'rganilayotgan til. `default` — shu tilda ovoz tanlanmaganda ishlatiladigani (ko'pi bilan bittasi).
+- Ilova saqlangan `id` ro'yxatda bo'lmasa (admin o'chirgan), uni "tanlanmagan" deb hisoblashi kerak.
+
+### `POST /tutor-voices/{id}/sample` — ovozni eshitib ko'rish
+
+```json
+// Request (ixtiyoriy)
+{ "language": "en" }
+
+// Response 200
+{ "data": { "url": "https://.../speech/abc.wav", "ms": 2600 } }
+```
+
+- Tutor o'sha tilda shu ovoz bilan o'zini tanishtiradi ("Hi! I'm James..."). Matn o'zgarmaydi, shuning uchun qayta eshitish keshdan keladi.
+- O'chirilgan ovoz — `404`; ovoz yaratilmasa `503 speech_unavailable` (`Retry-After` bilan).
 
 ### `POST /conversations/{id}/hint`
 

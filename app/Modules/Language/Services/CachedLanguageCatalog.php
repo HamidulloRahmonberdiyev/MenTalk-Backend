@@ -45,7 +45,7 @@ final readonly class CachedLanguageCatalog implements LanguageCatalog
     {
         $rows = Cache::rememberForever(self::CACHE_KEY, fn () => Language::query()->orderBy('sort')->get()
             ->map(fn (Language $language) => $language->only([
-                'code', 'name', 'tutor_name', 'voice', 'script_note', 'follow_ups', 'rules', 'basic_words', 'dictionary_form', 'active',
+                'code', 'name', 'tutor_name', 'male_tutor_name', 'voice', 'script_note', 'follow_ups', 'rules', 'basic_words', 'dictionary_form', 'active',
             ]))
             ->all());
 

@@ -13,7 +13,7 @@ use App\Modules\Conversation\Models\Conversation;
 use App\Modules\Conversation\Models\ConversationResult;
 use App\Modules\Conversation\Schemas\EvaluationSchema;
 use App\Modules\Conversation\Services\Transcript;
-use App\Modules\Language\Contracts\LanguageCatalog;
+use App\Modules\Conversation\Services\TutorPersona;
 use App\Modules\Language\Enums\InterfaceLanguage;
 use App\Modules\Progress\Services\ProgressTracker;
 use App\Modules\Progress\Support\Xp;
@@ -25,7 +25,7 @@ final readonly class FinishConversation
     public function __construct(
         private AiClient $ai,
         private PromptRenderer $prompts,
-        private LanguageCatalog $languages,
+        private TutorPersona $persona,
         private ProgressTracker $progress,
     ) {}
 
@@ -65,7 +65,7 @@ final readonly class FinishConversation
     private function evaluate(Conversation $conversation): array
     {
         $conversation->loadMissing('user.profile');
-        $language = $this->languages->get($conversation->target_language);
+        $language = $this->persona->language($conversation);
         $interface = $conversation->user->profile?->interfaceLanguage() ?? InterfaceLanguage::Uzbek;
 
         $raw = $this->ai->json(new AiRequest(

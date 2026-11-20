@@ -18,13 +18,15 @@ final class StartConversationController extends Controller
             $request->user(),
             $request->string('scenario_id')->toString(),
             $request->targetLanguage(),
+            $request->boolean('defer_opening'),
+            $request->voiceId(),
         );
 
         return response()->json([
             'data' => [
                 'conversation_id' => $conversation->id,
                 'target_language' => $conversation->target_language,
-            ] + (new TurnResource($turn))->resolve(),
+            ] + ($turn ? (new TurnResource($turn))->resolve() : []),
         ], 201);
     }
 }

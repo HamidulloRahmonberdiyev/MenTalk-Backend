@@ -17,6 +17,8 @@ final readonly class TutorLanguage
         public string $tutorName,
         /** TTS voice; null uses the default voice from `config('ai.voice')`. */
         public ?string $voice,
+        /** What the tutor is called when the learner picked a male voice; null keeps `tutorName`. */
+        public ?string $maleTutorName,
         /** Added after the name where the script matters (" (Cyrillic)"). */
         public string $scriptNote,
         /** Example closing questions, quoted for the prompt. */
@@ -37,12 +39,31 @@ final readonly class TutorLanguage
             name: $row['name'],
             tutorName: $row['tutor_name'],
             voice: $row['voice'] ?? null,
+            maleTutorName: ($row['male_tutor_name'] ?? null) ?: null,
             scriptNote: $row['script_note'] ?? '',
             followUps: $row['follow_ups'],
             rules: $row['rules'] ?? '',
             basicWords: $row['basic_words'],
             dictionaryForm: $row['dictionary_form'],
             active: (bool) $row['active'],
+        );
+    }
+
+    /** The same language, taught by the male tutor: prompts then name him instead. */
+    public function withMaleTutor(): self
+    {
+        return new self(
+            code: $this->code,
+            name: $this->name,
+            tutorName: $this->maleTutorName ?? $this->tutorName,
+            voice: $this->voice,
+            maleTutorName: $this->maleTutorName,
+            scriptNote: $this->scriptNote,
+            followUps: $this->followUps,
+            rules: $this->rules,
+            basicWords: $this->basicWords,
+            dictionaryForm: $this->dictionaryForm,
+            active: $this->active,
         );
     }
 }
