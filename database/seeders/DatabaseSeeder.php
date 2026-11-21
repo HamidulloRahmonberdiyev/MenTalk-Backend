@@ -10,6 +10,6 @@ final class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([LanguageSeeder::class, PromptSeeder::class, ScenarioSeeder::class, AdminSeeder::class]);
+        $this->call([LanguageSeeder::class, PromptSeeder::class, ScenarioSeeder::class, TopicPackSeeder::class, AdminSeeder::class]);
     }
 }
